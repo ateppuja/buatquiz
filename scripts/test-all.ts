@@ -1,0 +1,312 @@
+import { generateExamCode, normalizeExamCode } from "../src/lib/code-generator";
+import { parseDocxBuffer } from "../src/lib/docx-parser";
+import { parseQuestionsExcelBuffer, parseStudentsExcelBuffer } from "../src/lib/excel-parser";
+import { calculateAttemptScore, calculateMultiAttemptFinalScore } from "../src/lib/scoring";
+import { generateExamReportExcelBuffer } from "../src/lib/excel-exporter";
+import { parseQuestionsFromRawText } from "../src/lib/text-parser";
+import { Document, Packer, Paragraph, HeadingLevel } from "docx";
+import * as XLSX from "xlsx";
+import { prisma } from "../src/lib/prisma";
+
+let totalPassed = 0;
+let totalFailed = 0;
+
+function assert(condition: boolean, testName: string) {
+  if (condition) {
+    console.log(`  ✅ PASS: ${testName}`);
+    totalPassed++;
+  } else {
+    console.error(`  ❌ FAIL: ${testName}`);
+    totalFailed++;
+  }
+}
+
+async function runTests() {
+  console.log("\n=======================================================");
+  console.log("   EXAMCODE SCHOOL - COMPREHENSIVE TEST SUITE");
+  console.log("=======================================================\n");
+
+  // ----------------------------------------------------
+  // TEST 1: Exam Code Generator (FR-012)
+  // ----------------------------------------------------
+  console.log("1. Pengujian Generator Kode Ujian Otomatis (FR-012)");
+  const code1 = generateExamCode(8);
+  const code2 = generateExamCode(8);
+  assert(code1.length === 8, "Panjang kode tepat 8 karakter");
+  assert(code1 !== code2, "Dua kode acak berurutan unik");
+  assert(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/.test(code1), "Tidak mengandung karakter ambigu (0, O, 1, I, L)");
+  assert(normalizeExamCode("  mtk9a2bc  ") === "MTK9A2BC", "Normalisasi input kode case-insensitive & trim");
+
+  // ----------------------------------------------------
+  // TEST 2: Word Parser (FR-008)
+  // ----------------------------------------------------
+  console.log("\n2. Pengujian Parser Template Word .docx (FR-008)");
+  const doc = new Document({
+    sections: [
+      {
+        children: [
+          new Paragraph({ text: "[SOAL]" }),
+          new Paragraph({ text: "TIPE: PG" }),
+          new Paragraph({ text: "PERTANYAAN: Berapakah hasil 10 + 5?" }),
+          new Paragraph({ text: "A: 10" }),
+          new Paragraph({ text: "B: 15" }),
+          new Paragraph({ text: "C: 20" }),
+          new Paragraph({ text: "D: 25" }),
+          new Paragraph({ text: "KUNCI: B" }),
+          new Paragraph({ text: "BOBOT: 10" }),
+          new Paragraph({ text: "[/SOAL]" }),
+          new Paragraph({ text: "[SOAL]" }),
+          new Paragraph({ text: "TIPE: ESAI" }),
+          new Paragraph({ text: "PERTANYAAN: Jelaskan siklus air!" }),
+          new Paragraph({ text: "BOBOT: 20" }),
+          new Paragraph({ text: "[/SOAL]" }),
+        ],
+      },
+    ],
+  });
+  const docBuffer = await Packer.toBuffer(doc);
+  const docxResult = await parseDocxBuffer(docBuffer);
+  assert(docxResult.success === true, "Word parser berhasil membaca template");
+  assert(docxResult.totalParsed === 2, "Tepat 2 soal terbaca");
+  assert(docxResult.questions[0].type === "MULTIPLE_CHOICE", "Soal 1 adalah Pilihan Ganda");
+  assert(docxResult.questions[0].options.find((o) => o.key === "B")?.isCorrect === true, "Kunci B bertanda isCorrect = true");
+  assert(docxResult.questions[1].type === "ESSAY", "Soal 2 adalah Esai");
+
+  // ----------------------------------------------------
+  // TEST 3: Excel Parsers (FR-009 & FR-003)
+  // ----------------------------------------------------
+  console.log("\n3. Pengujian Parser Template Excel .xlsx (FR-009 & FR-003)");
+  // Question Excel
+  const qRows = [
+    { tipe_soal: "PG", pertanyaan: "Ibukota Indonesia?", opsi_a: "Bandung", opsi_b: "Jakarta", kunci_jawaban: "B", bobot: 5 },
+    { tipe_soal: "BS", pertanyaan: "Matahari terbit dari timur.", kunci_jawaban: "BENAR", bobot: 5 },
+  ];
+  const wsQ = XLSX.utils.json_to_sheet(qRows);
+  const wbQ = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wbQ, wsQ, "Soal");
+  const excelQBuffer = XLSX.write(wbQ, { type: "buffer", bookType: "xlsx" });
+  const excelQResult = parseQuestionsExcelBuffer(excelQBuffer);
+  assert(excelQResult.success === true, "Excel question parser berhasil");
+  assert(excelQResult.validCount === 2, "2 soal Excel berstatus valid");
+
+  // Student Excel
+  const sRows = [
+    { nis: "9901", nama: "Budi Test", kelas: "IX A", jenis_kelamin: "L" },
+    { nis: "9902", nama: "Ani Test", kelas: "IX B", jenis_kelamin: "P" },
+  ];
+  const wsS = XLSX.utils.json_to_sheet(sRows);
+  const wbS = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wbS, wsS, "Murid");
+  const excelSBuffer = XLSX.write(wbS, { type: "buffer", bookType: "xlsx" });
+  const excelSResult = parseStudentsExcelBuffer(excelSBuffer);
+  assert(excelSResult.success === true, "Excel student parser berhasil");
+  assert(excelSResult.students[0].nis === "9901", "NIS 9901 diekstrak dengan benar");
+
+  // ----------------------------------------------------
+  // TEST 4: Scoring Engine (FR-019 & FR-020)
+  // ----------------------------------------------------
+  console.log("\n4. Pengujian Engine Penilaian & Multi-Attempt (FR-019 & FR-020)");
+  const mockQuestions = [
+    { id: "q1", type: "MULTIPLE_CHOICE", points: 20, options: [{ id: "opt1", isCorrect: true }, { id: "opt2", isCorrect: false }] },
+    { id: "q2", type: "TRUE_FALSE", points: 20, options: [{ id: "opt3", isCorrect: true }, { id: "opt4", isCorrect: false }] },
+    { id: "q3", type: "ESSAY", points: 60, options: [] },
+  ];
+
+  // Attempt with correct PG, correct TF, and essay graded 40/60 points
+  const mockAnswers = [
+    { questionId: "q1", selectedOptionId: "opt1" },
+    { questionId: "q2", selectedOptionId: "opt3" },
+    { questionId: "q3", answerText: "Penjelasan saya", awardedPoints: 40 },
+  ];
+
+  const score1 = calculateAttemptScore(mockQuestions, mockAnswers);
+  assert(score1.earnedPoints === 80, "Poin diperoleh 20 + 20 + 40 = 80 poin");
+  assert(score1.maxPoints === 100, "Total poin maksimal 100 poin");
+  assert(score1.finalScore === 80, "Nilai akhir percobaan 80.00");
+  assert(score1.hasUngradedEssays === false, "Tidak ada esai yang belum dinilai");
+
+  // Multi Attempt calculations
+  const attemptsHistory = [
+    { attemptNumber: 1, finalScore: 70, gradingStatus: "GRADED" },
+    { attemptNumber: 2, finalScore: 90, gradingStatus: "GRADED" },
+    { attemptNumber: 3, finalScore: 80, gradingStatus: "GRADED" },
+  ];
+
+  const scoreHighest = calculateMultiAttemptFinalScore(attemptsHistory, "HIGHEST");
+  assert(scoreHighest.finalScore === 90, "Metode HIGHEST memilih 90");
+
+  const scoreLatest = calculateMultiAttemptFinalScore(attemptsHistory, "LATEST");
+  assert(scoreLatest.finalScore === 80, "Metode LATEST memilih percobaan terakhir (80)");
+
+  const scoreAverage = calculateMultiAttemptFinalScore(attemptsHistory, "AVERAGE");
+  assert(scoreAverage.finalScore === 80, "Metode AVERAGE menghitung rata-rata (70+90+80)/3 = 80.00");
+
+  // ----------------------------------------------------
+  // TEST 5: Excel Report Exporter (FR-023)
+  // ----------------------------------------------------
+  console.log("\n5. Pengujian Ekspor Laporan Excel 2-Sheet (FR-023)");
+  const exportBuffer = await generateExamReportExcelBuffer({
+    exam: {
+      title: "Ujian Matematika IX",
+      subjectName: "Matematika",
+      teacherName: "Pak Budi",
+      examCode: "MTK9A2BC",
+      durationMinutes: 60,
+      startAt: new Date(),
+      endAt: new Date(),
+      gradingMethod: "HIGHEST",
+      maxAttempts: 3,
+    },
+    questions: [
+      { id: "q1", orderIndex: 0, type: "MULTIPLE_CHOICE", points: 20, questionText: "Soal 1" },
+    ],
+    participants: [
+      {
+        studentId: "s1",
+        nis: "1001",
+        name: "Ahmad Fauzi",
+        className: "IX A",
+        totalAttempts: 1,
+        highestScore: 85,
+        latestScore: 85,
+        averageScore: 85,
+        finalScore: 85,
+        gradingStatus: "GRADED",
+        attempts: [
+          {
+            attemptNumber: 1,
+            startedAt: new Date(),
+            submittedAt: new Date(),
+            status: "SUBMITTED",
+            finalScore: 85,
+            earnedPoints: 17,
+            maxPoints: 20,
+            gradingStatus: "GRADED",
+            answers: [{ questionId: "q1", answerText: null, selectedOptionText: "Pilihan B", awardedPoints: 17 }],
+          },
+        ],
+      },
+    ],
+  });
+
+  assert(exportBuffer.length > 1000, "Buffer Excel laporan terbuat (size > 1KB)");
+
+  // ----------------------------------------------------
+  // TEST 6: Database Integration & Seed Validation
+  // ----------------------------------------------------
+  console.log("\n6. Pengujian Database & Relasi Ujian");
+  const seededAdmin = await prisma.user.findFirst({ where: { username: "admin" } });
+  const seededTeacher = await prisma.user.findFirst({ where: { username: "budi" } });
+  const seededExam = await prisma.exam.findFirst({ where: { examCode: "MTK9A2BC" }, include: { questions: true } });
+  const seededStudent = await prisma.student.findFirst({ where: { name: "Ahmad Fauzi" } });
+
+  assert(seededAdmin !== null && seededAdmin.role === "ADMIN", "Admin sekolah ada di database");
+  assert(seededTeacher !== null && seededTeacher.role === "TEACHER", "Guru Budi ada di database");
+  assert(seededExam !== null && seededExam.status === "PUBLISHED", "Ujian MTK9A2BC aktif berstatus PUBLISHED");
+  assert(seededExam?.questions.length === 4, "Ujian memiliki 4 butir soal");
+  assert(seededStudent !== null && seededStudent.name === "Ahmad Fauzi", "Murid Ahmad Fauzi terdaftar dan dapat diakses dengan Nama & Kelas");
+
+  // ----------------------------------------------------
+  // TEST 7: School Name & Custom Class CRUD
+  // ----------------------------------------------------
+  console.log("\n7. Pengujian Nama Sekolah & Manajemen Kelas Kustom (CRUD)");
+  const school = await prisma.school.findFirst();
+  assert(school?.name === "Quiz White Bee School of Life", "Nama sekolah terkonfigurasi 'Quiz White Bee School of Life'");
+
+  // Test Create Custom Class
+  const customClass = await prisma.class.create({
+    data: {
+      schoolId: school!.id,
+      name: "Bee Toddler Test",
+      gradeLevel: 0,
+    },
+  });
+  assert(customClass.name === "Bee Toddler Test" && customClass.gradeLevel === 0, "Kelas kustom (PAUD/TK 0) berhasil dibuat");
+
+  // Test Update Custom Class
+  const updatedClass = await prisma.class.update({
+    where: { id: customClass.id },
+    data: { name: "Bee Primary 1", gradeLevel: 1 },
+  });
+  assert(updatedClass.name === "Bee Primary 1" && updatedClass.gradeLevel === 1, "Kelas kustom berhasil di-edit");
+
+  // Test Delete Custom Class
+  await prisma.class.delete({ where: { id: customClass.id } });
+  const checkDeleted = await prisma.class.findUnique({ where: { id: customClass.id } });
+  assert(checkDeleted === null, "Kelas kustom berhasil di-hapus");
+
+  // ----------------------------------------------------
+  // TEST 8: Teacher Custom Subject Management (CRUD)
+  // ----------------------------------------------------
+  console.log("\n8. Pengujian Manajemen Mata Pelajaran Guru & Kustom (CRUD)");
+  // Create Subject
+  const customSubject = await prisma.subject.create({
+    data: {
+      schoolId: school!.id,
+      name: "Robotika & Coding",
+      code: "ROBO",
+    },
+  });
+  assert(customSubject.name === "Robotika & Coding" && customSubject.code === "ROBO", "Mapel kustom guru berhasil dibuat");
+
+  // Update Subject
+  const updatedSubject = await prisma.subject.update({
+    where: { id: customSubject.id },
+    data: { name: "Coding & AI", code: "CAI" },
+  });
+  assert(updatedSubject.name === "Coding & AI" && updatedSubject.code === "CAI", "Mapel kustom berhasil di-edit");
+
+  // Delete Subject
+  await prisma.subject.delete({ where: { id: customSubject.id } });
+  const checkSubDeleted = await prisma.subject.findUnique({ where: { id: customSubject.id } });
+  assert(checkSubDeleted === null, "Mapel kustom berhasil di-hapus");
+
+  // ----------------------------------------------------
+  // TEST 9: Smart Text-to-Question Parser
+  // ----------------------------------------------------
+  console.log("\n9. Pengujian Parser Teks Otomatis Jadi Soal");
+  const rawSampleText = `1. Berapakah hasil dari 25 + 15?
+A. 30
+B. 35
+C. 40
+D. 45
+Kunci: C
+Bobot: 10
+Pembahasan: 25 + 15 = 40.
+
+2. Ibukota Indonesia adalah Nusantara.
+A. Benar
+B. Salah
+Kunci: A
+Bobot: 5
+
+3. Jelaskan pengertian dari fotosintesis pada tumbuhan hijau!
+Bobot: 20
+Pembahasan: Fotosintesis adalah proses pembentukan energi kimia oleh tumbuhan.`;
+
+  const parsedTextResult = parseQuestionsFromRawText(rawSampleText);
+  assert(parsedTextResult.success === true, "Text parser berhasil memproses teks soal mentah");
+  assert(parsedTextResult.validCount === 3, "3 butir soal teks valid dikenali");
+  assert(parsedTextResult.questions[0].type === "MULTIPLE_CHOICE", "Soal 1 otomatis dikenali sebagai Pilihan Ganda");
+  assert(parsedTextResult.questions[0].options.find((o) => o.key === "C")?.isCorrect === true, "Kunci C pada soal 1 valid");
+  assert(parsedTextResult.questions[1].type === "TRUE_FALSE", "Soal 2 otomatis dikenali sebagai Benar/Salah");
+  assert(parsedTextResult.questions[2].type === "ESSAY", "Soal 3 otomatis dikenali sebagai Esai");
+  assert(parsedTextResult.questions[2].points === 20, "Bobot 20 pada soal 3 terbaca akurat");
+
+  console.log("\n=======================================================");
+  console.log(`   HASIL TEST SUITE: ${totalPassed} BERHASIL, ${totalFailed} GAGAL`);
+  console.log("=======================================================\n");
+
+  if (totalFailed > 0) {
+    process.exit(1);
+  }
+}
+
+runTests()
+  .catch((e) => {
+    console.error("Test execution failed:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

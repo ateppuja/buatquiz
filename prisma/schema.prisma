@@ -1,0 +1,323 @@
+// Prisma Schema for ExamCode School (PRD v2.0)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id          String   @id @default(uuid())
+  name        String
+  npsn        String?
+  address     String?
+  logo        String?
+  timezone    String   @default("Asia/Jakarta")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users         User[]
+  academicYears AcademicYear[]
+  classes       Class[]
+  subjects      Subject[]
+  students      Student[]
+  exams         Exam[]
+  auditLogs     AuditLog[]
+
+  @@map("schools")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  schoolId     String
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  nip          String?
+  name         String
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  role         String   @default("TEACHER") // ADMIN, TEACHER
+  status       String   @default("ACTIVE")  // ACTIVE, INACTIVE
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  teacherClasses TeacherClass[]
+  exams          Exam[]
+  auditLogs      AuditLog[]
+
+  @@index([schoolId])
+  @@map("users")
+}
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name      String   // e.g. "2026/2027"
+  semester  Int      @default(1) // 1 or 2
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  classes Class[]
+
+  @@index([schoolId])
+  @@map("academic_years")
+}
+
+model Class {
+  id             String        @id @default(uuid())
+  schoolId       String
+  school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYearId String?
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  name           String        // e.g. "VII A", "IX B"
+  gradeLevel     Int           // 7, 8, 9, 10, 11, 12
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  students       Student[]
+  teacherClasses TeacherClass[]
+  examClasses    ExamClass[]
+
+  @@index([schoolId])
+  @@map("classes")
+}
+
+model Subject {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name      String   // e.g. "Matematika", "Ilmu Pengetahuan Alam"
+  code      String   // e.g. "MTK", "IPA"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacherClasses TeacherClass[]
+  exams          Exam[]
+
+  @@index([schoolId])
+  @@map("subjects")
+}
+
+model TeacherClass {
+  id        String   @id @default(uuid())
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classId, subjectId])
+  @@map("teacher_classes")
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  nis       String?  // Optional NIS
+  name      String
+  gender    String?  // L / P
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  pin       String?  // Optional individual one-time/access PIN
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attempts    ExamAttempt[]
+  examResults ExamResult[]
+
+  @@index([schoolId])
+  @@index([classId])
+  @@map("students")
+}
+
+model Exam {
+  id               String    @id @default(uuid())
+  schoolId         String
+  school           School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherId        String
+  teacher          User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subjectId        String
+  subject          Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  instructions     String?
+  examCode         String?   @unique // 8-character unique code e.g. MTK9A2BC
+  durationMinutes  Int       @default(60)
+  startAt          DateTime
+  endAt            DateTime
+  maxAttempts      Int       @default(1) // 1 to 10
+  gradingMethod    String    @default("HIGHEST") // HIGHEST, LATEST, AVERAGE
+  resultVisibility String    @default("MANUAL")  // IMMEDIATE, MANUAL, HIDDEN
+  shuffleQuestions Boolean   @default(false)
+  shuffleOptions   Boolean   @default(false)
+  navigationMode   String    @default("FREE")    // FREE, SEQUENTIAL
+  showAnswerKey    Boolean   @default(false)
+  pin              String?   // Optional exam-level PIN
+  status           String    @default("DRAFT")   // DRAFT, PUBLISHED, CLOSED
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  examClasses ExamClass[]
+  questions   Question[]
+  attempts    ExamAttempt[]
+  examResults ExamResult[]
+
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([examCode])
+  @@map("exams")
+}
+
+model ExamClass {
+  id      String @id @default(uuid())
+  examId  String
+  exam    Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  classId String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, classId])
+  @@map("exam_classes")
+}
+
+model Question {
+  id            String   @id @default(uuid())
+  examId        String
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  type          String   // MULTIPLE_CHOICE, TRUE_FALSE, ESSAY
+  questionText  String
+  questionImage String?
+  points        Float    @default(5.0)
+  explanation   String?
+  orderIndex    Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  options              QuestionOption[]
+  answers              Answer[]
+  attemptQuestionOrder AttemptQuestionOrder[]
+
+  @@index([examId])
+  @@map("questions")
+}
+
+model QuestionOption {
+  id          String   @id @default(uuid())
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  optionKey   String   // A, B, C, D, E or BENAR / SALAH
+  optionText  String
+  isCorrect   Boolean  @default(false)
+  orderIndex  Int      @default(0)
+
+  answers Answer[]
+
+  @@index([questionId])
+  @@map("question_options")
+}
+
+model ExamAttempt {
+  id            String    @id @default(uuid())
+  examId        String
+  exam          Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attemptNumber Int       @default(1)
+  status        String    @default("IN_PROGRESS") // IN_PROGRESS, SUBMITTED, EXPIRED
+  startedAt     DateTime  @default(now())
+  deadlineAt    DateTime
+  submittedAt   DateTime?
+  earnedPoints  Float?    @default(0)
+  maxPoints     Float?    @default(0)
+  finalScore    Float?    @default(0)
+  gradingStatus String    @default("PENDING") // PENDING, GRADED
+  clientIp      String?
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  answers       Answer[]
+  questionOrder AttemptQuestionOrder[]
+
+  @@unique([examId, studentId, attemptNumber])
+  @@index([examId])
+  @@index([studentId])
+  @@map("exam_attempts")
+}
+
+model AttemptQuestionOrder {
+  id              String      @id @default(uuid())
+  attemptId       String
+  attempt         ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId      String
+  question        Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  orderIndex      Int
+  optionOrderJson String?     // Serialized array of option IDs for option shuffling
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@map("attempt_question_orders")
+}
+
+model Answer {
+  id               String          @id @default(uuid())
+  attemptId        String
+  attempt          ExamAttempt     @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId       String
+  question         Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOptionId String?
+  selectedOption   QuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+  answerText       String?         // For Essay
+  awardedPoints    Float?
+  feedback         String?         // Teacher feedback for essay
+  revision         Int             @default(1)
+  savedAt          DateTime        @default(now())
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@map("answers")
+}
+
+model ExamResult {
+  id            String   @id @default(uuid())
+  examId        String
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  highestScore  Float?
+  latestScore   Float?
+  averageScore  Float?
+  finalScore    Float?
+  totalAttempts Int      @default(0)
+  gradingStatus String   @default("PENDING") // PENDING, GRADED
+  isPublished   Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([examId, studentId])
+  @@index([examId])
+  @@index([studentId])
+  @@map("exam_results")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // e.g. "EXAM_PUBLISHED", "ATTEMPT_RESET", "EXAM_EMERGENCY_CLOSE"
+  details   String?  // JSON string
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([schoolId])
+  @@map("audit_logs")
+}
