@@ -293,6 +293,60 @@ Pembahasan: Fotosintesis adalah proses pembentukan energi kimia oleh tumbuhan.`;
   assert(parsedTextResult.questions[2].type === "ESSAY", "Soal 3 otomatis dikenali sebagai Esai");
   assert(parsedTextResult.questions[2].points === 20, "Bobot 20 pada soal 3 terbaca akurat");
 
+  // ----------------------------------------------------
+  // TEST 10: Teacher CRUD Management (FR-002)
+  // ----------------------------------------------------
+  console.log("\n10. Pengujian Manajemen Guru (CRUD)");
+  const testTeacher = await prisma.user.create({
+    data: {
+      schoolId: school!.id,
+      name: "Ibu Siti Nurhaliza, M.Pd.",
+      username: "siti.test",
+      email: "siti.test@whitebee.sch.id",
+      passwordHash: "dummyhash",
+      role: "TEACHER",
+      status: "ACTIVE",
+    },
+  });
+  assert(testTeacher.name === "Ibu Siti Nurhaliza, M.Pd." && testTeacher.username === "siti.test", "Guru baru berhasil dibuat");
+
+  const updatedTeacher = await prisma.user.update({
+    where: { id: testTeacher.id },
+    data: { name: "Ibu Siti Nurhaliza, S.Si.", username: "siti.updated" },
+  });
+  assert(updatedTeacher.name === "Ibu Siti Nurhaliza, S.Si." && updatedTeacher.username === "siti.updated", "Data guru berhasil di-edit");
+
+  await prisma.user.delete({ where: { id: testTeacher.id } });
+  const checkTeacherDeleted = await prisma.user.findUnique({ where: { id: testTeacher.id } });
+  assert(checkTeacherDeleted === null, "Akun guru berhasil di-hapus");
+
+  // ----------------------------------------------------
+  // TEST 11: Student CRUD Management (FR-003)
+  // ----------------------------------------------------
+  console.log("\n11. Pengujian Manajemen Murid (CRUD)");
+  const sampleClass = await prisma.class.findFirst({ where: { schoolId: school!.id } });
+  const testStudent = await prisma.student.create({
+    data: {
+      schoolId: school!.id,
+      classId: sampleClass!.id,
+      name: "Bintang Pratama",
+      nis: "8888",
+      gender: "L",
+      status: "ACTIVE",
+    },
+  });
+  assert(testStudent.name === "Bintang Pratama" && testStudent.nis === "8888", "Murid baru berhasil dibuat");
+
+  const updatedStudent = await prisma.student.update({
+    where: { id: testStudent.id },
+    data: { name: "Bintang Pratama Putra", nis: "8889" },
+  });
+  assert(updatedStudent.name === "Bintang Pratama Putra" && updatedStudent.nis === "8889", "Data murid berhasil di-edit");
+
+  await prisma.student.delete({ where: { id: testStudent.id } });
+  const checkStudentDeleted = await prisma.student.findUnique({ where: { id: testStudent.id } });
+  assert(checkStudentDeleted === null, "Data murid berhasil di-hapus");
+
   console.log("\n=======================================================");
   console.log(`   HASIL TEST SUITE: ${totalPassed} BERHASIL, ${totalFailed} GAGAL`);
   console.log("=======================================================\n");
