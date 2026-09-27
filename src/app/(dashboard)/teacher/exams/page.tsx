@@ -1,7 +1,6 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,15 +18,21 @@ import {
   Clock,
   Layers,
   CheckCircle,
+  CopyPlus,
+  Trash2,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function TeacherExamsPage() {
+  const router = useRouter();
   const [exams, setExams] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const loadExams = async () => {
     try {
@@ -46,6 +51,52 @@ export default function TeacherExamsPage() {
   useEffect(() => {
     loadExams();
   }, []);
+
+  const handleDuplicateExam = async (examId: string, title: string) => {
+    setActionLoadingId(examId);
+    try {
+      const res = await fetch(`/api/v1/teacher/exams/${examId}/duplicate`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Ujian "${title}" berhasil disalin/dibuat lagi!`);
+        await loadExams();
+        // Redirect to newly cloned draft exam for quick edit
+        if (data.data?.id) {
+          router.push(`/teacher/exams/${data.data.id}/edit`);
+        }
+      } else {
+        toast.error(data.error?.message || "Gagal menduplikasi ujian.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat menduplikasi ujian.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleDeleteExam = async (examId: string, title: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus ujian "${title}"? Semua butir soal dan data pengerjaan terkait akan dihapus secara permanen.`)) {
+      return;
+    }
+
+    setActionLoadingId(examId);
+    try {
+      const res = await fetch(`/api/v1/teacher/exams/${examId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Ujian "${title}" berhasil dihapus.`);
+        loadExams();
+      } else {
+        toast.error(data.error?.message || "Gagal menghapus ujian.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat menghapus ujian.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   const handleCloseExam = async (examId: string, title: string) => {
     if (!confirm(`Apakah Anda yakin ingin menutup ujian "${title}"? Sesi pengerjaan yang sedang berjalan akan diakhiri.`)) {
@@ -150,6 +201,7 @@ export default function TeacherExamsPage() {
             const isPublished = exam.status === "PUBLISHED";
             const isClosed = exam.status === "CLOSED";
             const isDraft = exam.status === "DRAFT";
+            const isBusy = actionLoadingId === exam.id;
 
             return (
               <Card key={exam.id} className="p-5 shadow-sm border-border hover:shadow transition-shadow">
@@ -169,7 +221,7 @@ export default function TeacherExamsPage() {
                           <button
                             type="button"
                             onClick={() => copyExamCode(exam.examCode)}
-                            className="hover:text-primary/70 ml-1"
+                            className="hover:text-primary/70 ml-1 cursor-pointer"
                             title="Salin Kode"
                           >
                             <Copy className="h-3.5 w-3.5" />
@@ -202,45 +254,41 @@ export default function TeacherExamsPage() {
 
                   {/* Right Actions */}
                   <div className="flex flex-wrap items-center gap-2 border-t lg:border-t-0 pt-3 lg:pt-0">
-                    {isDraft ? (
-                      <Link href={`/teacher/exams/${exam.id}/edit`}>
-                        <Button size="sm" className="gap-1.5 text-xs font-semibold">
-                          <Edit className="h-3.5 w-3.5" />
-                          <span>Lanjutkan Edit Draft</span>
-                        </Button>
-                      </Link>
-                    ) : (
+                    {/* Monitoring (if published) */}
+                    {isPublished && (
                       <>
-                        {isPublished && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => copyExamLink(exam.examCode)}
-                              className="gap-1 text-xs"
-                              title="Salin Link Pengerjaan Murid"
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">Salin Link</span>
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleCloseExam(exam.id, exam.title)}
-                              className="gap-1 text-xs"
-                              title="Tutup Ujian Sekarang"
-                            >
-                              <PowerOff className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">Tutup</span>
-                            </Button>
-                          </>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyExamLink(exam.examCode)}
+                          className="gap-1 text-xs font-semibold"
+                          title="Salin Link Pengerjaan Murid"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Salin Link</span>
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleCloseExam(exam.id, exam.title)}
+                          className="gap-1 text-xs font-semibold"
+                          title="Tutup Ujian Sekarang"
+                        >
+                          <PowerOff className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Tutup</span>
+                        </Button>
                         <Link href={`/teacher/exams/${exam.id}/monitor`}>
                           <Button variant="outline" size="sm" className="gap-1 text-xs font-semibold">
                             <Users className="h-3.5 w-3.5" />
                             <span>Monitoring</span>
                           </Button>
                         </Link>
+                      </>
+                    )}
+
+                    {/* Hasil & Nilai (for published / closed) */}
+                    {!isDraft && (
+                      <>
                         <Link href={`/teacher/exams/${exam.id}/results`}>
                           <Button size="sm" className="gap-1 text-xs font-semibold">
                             <BarChart3 className="h-3.5 w-3.5" />
@@ -255,6 +303,39 @@ export default function TeacherExamsPage() {
                         </a>
                       </>
                     )}
+
+                    {/* Edit Exam Button (Available for ALL statuses) */}
+                    <Link href={`/teacher/exams/${exam.id}/edit`}>
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs font-semibold text-blue-600 border-blue-200 hover:bg-blue-50">
+                        <Edit className="h-3.5 w-3.5" />
+                        <span>Edit Ujian</span>
+                      </Button>
+                    </Link>
+
+                    {/* Duplicate / Buat Ujian Lagi Button (Available for ALL statuses) */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isBusy}
+                      onClick={() => handleDuplicateExam(exam.id, exam.title)}
+                      className="gap-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300"
+                      title="Duplikat ujian ini beserta seluruh butir soal untuk membuat ujian baru"
+                    >
+                      {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CopyPlus className="h-3.5 w-3.5" />}
+                      <span>Buat Lagi (Duplikat)</span>
+                    </Button>
+
+                    {/* Delete Exam Button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isBusy}
+                      onClick={() => handleDeleteExam(exam.id, exam.title)}
+                      className="gap-1 text-xs text-muted-foreground hover:text-destructive hover:bg-red-50 p-2"
+                      title="Hapus Ujian"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               </Card>

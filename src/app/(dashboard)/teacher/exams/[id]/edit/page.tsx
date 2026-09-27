@@ -16,6 +16,10 @@ import {
   CheckCircle2,
   Layers,
   Clock,
+  Check,
+  CheckCircle,
+  HelpCircle,
+  CopyPlus,
 } from "lucide-react";
 import { formatDateTimeLocal, cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -58,7 +62,18 @@ export default function EditExamPage() {
       setMaxAttempts(ex.maxAttempts);
       setGradingMethod(ex.gradingMethod);
       setResultVisibility(ex.resultVisibility);
-      setQuestions(ex.questions || []);
+
+      // Normalize questions & options structure for easy inline editing
+      const normalizedQ = (ex.questions || []).map((q: any) => ({
+        ...q,
+        options: (q.options || []).map((opt: any) => ({
+          ...opt,
+          key: opt.optionKey || opt.key,
+          text: opt.optionText || opt.text || "",
+          isCorrect: Boolean(opt.isCorrect),
+        })),
+      }));
+      setQuestions(normalizedQ);
     } catch {
       toast.error("Gagal memuat detail ujian.");
     } finally {
@@ -70,10 +85,60 @@ export default function EditExamPage() {
     if (examId) loadExamDetail();
   }, [examId]);
 
+  const updateQuestionField = (qIdx: number, field: string, val: any) => {
+    setQuestions((prev) => {
+      const updated = [...prev];
+      updated[qIdx] = { ...updated[qIdx], [field]: val };
+      return updated;
+    });
+  };
+
+  const updateOptionText = (qIdx: number, optIdx: number, text: string) => {
+    setQuestions((prev) => {
+      const updated = [...prev];
+      const opts = [...updated[qIdx].options];
+      opts[optIdx] = { ...opts[optIdx], text, optionText: text };
+      updated[qIdx].options = opts;
+      return updated;
+    });
+  };
+
+  const setCorrectOption = (qIdx: number, optIdx: number) => {
+    setQuestions((prev) => {
+      const updated = [...prev];
+      updated[qIdx].options = updated[qIdx].options.map((o: any, idx: number) => ({
+        ...o,
+        isCorrect: idx === optIdx,
+      }));
+      return updated;
+    });
+  };
+
   const handleUpdateExam = async (publish: boolean = false) => {
+    // Basic validation
+    if (!title.trim()) {
+      toast.error("Judul ujian wajib diisi.");
+      return;
+    }
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.questionText.trim()) {
+        toast.error(`Pertanyaan soal nomor ${i + 1} belum diisi.`);
+        return;
+      }
+      if (q.type === "MULTIPLE_CHOICE" || q.type === "TRUE_FALSE") {
+        const hasKey = q.options?.some((o: any) => o.isCorrect);
+        if (!hasKey) {
+          toast.error(`Kunci jawaban untuk soal nomor ${i + 1} belum dipilih.`);
+          return;
+        }
+      }
+    }
+
     setIsSaving(true);
     try {
-      // 1. Update Exam
+      // 1. Update Exam Meta
       const res = await fetch(`/api/v1/teacher/exams/${examId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -90,12 +155,31 @@ export default function EditExamPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        toast.error(data.error?.message || "Gagal menyimpan perubahan.");
+        toast.error(data.error?.message || "Gagal menyimpan perubahan ujian.");
         setIsSaving(false);
         return;
       }
 
-      // 2. If publishing
+      // 2. Save all questions and options
+      for (const q of questions) {
+        if (q.id && !q.id.startsWith("temp-")) {
+          await fetch(`/api/v1/teacher/exams/${examId}/questions/${q.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              questionText: q.questionText,
+              points: parseFloat(q.points) || 5,
+              options: q.options?.map((o: any, oIdx: number) => ({
+                key: o.key || o.optionKey || String.fromCharCode(65 + oIdx),
+                text: o.text || o.optionText || "",
+                isCorrect: Boolean(o.isCorrect),
+              })),
+            }),
+          }).catch(() => {});
+        }
+      }
+
+      // 3. If publishing
       if (publish) {
         const pubRes = await fetch(`/api/v1/teacher/exams/${examId}/publish`, { method: "POST" });
         const pubData = await pubRes.json();
@@ -110,7 +194,7 @@ export default function EditExamPage() {
         }
       }
 
-      toast.success("Perubahan ujian berhasil disimpan.");
+      toast.success("Perubahan ujian & soal berhasil disimpan!");
       loadExamDetail();
     } catch {
       toast.error("Terjadi kesalahan saat menyimpan.");
@@ -158,6 +242,10 @@ export default function EditExamPage() {
   };
 
   const handleDeleteQuestion = async (qId: string) => {
+    if (questions.length === 1) {
+      toast.error("Ujian minimal harus memiliki 1 butir soal.");
+      return;
+    }
     if (!confirm("Hapus butir soal ini?")) return;
     try {
       const res = await fetch(`/api/v1/teacher/exams/${examId}/questions/${qId}`, {
@@ -172,6 +260,21 @@ export default function EditExamPage() {
     }
   };
 
+  const handleDuplicateCurrentExam = async () => {
+    try {
+      const res = await fetch(`/api/v1/teacher/exams/${examId}/duplicate`, { method: "POST" });
+      const data = await res.json();
+      if (data.success && data.data?.id) {
+        toast.success(`Ujian berhasil disalin!`);
+        router.push(`/teacher/exams/${data.data.id}/edit`);
+      } else {
+        toast.error(data.error?.message || "Gagal menduplikasi ujian.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat menduplikasi.");
+    }
+  };
+
   if (isLoading || !exam) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -181,7 +284,7 @@ export default function EditExamPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="space-y-6 max-w-5xl mx-auto pb-16">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
@@ -189,7 +292,7 @@ export default function EditExamPage() {
             <button
               type="button"
               onClick={() => router.push("/teacher/exams")}
-              className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 font-semibold"
+              className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 font-semibold cursor-pointer"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Daftar Ujian</span>
@@ -197,18 +300,42 @@ export default function EditExamPage() {
             <span className="text-muted-foreground">•</span>
             <Badge variant="outline" className="text-xs">{exam.subject?.name}</Badge>
             {exam.status === "PUBLISHED" && <Badge variant="success" className="text-xs">Aktif ({exam.examCode})</Badge>}
+            {exam.status === "CLOSED" && <Badge variant="secondary" className="text-xs">Selesai</Badge>}
             {exam.status === "DRAFT" && <Badge variant="outline" className="text-xs">Draft</Badge>}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Edit Ujian & Lembar Soal</h1>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" isLoading={isSaving} onClick={() => handleUpdateExam(false)} className="gap-1.5 text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleDuplicateCurrentExam}
+            className="gap-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300"
+            title="Duplikat ujian ini menjadi ujian baru"
+          >
+            <CopyPlus className="h-4 w-4" />
+            <span>Buat Lagi dari Ini</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            isLoading={isSaving}
+            onClick={() => handleUpdateExam(false)}
+            className="gap-1.5 text-xs font-semibold"
+          >
             <Save className="h-4 w-4" />
             <span>Simpan Perubahan</span>
           </Button>
+
           {exam.status === "DRAFT" && (
-            <Button onClick={() => handleUpdateExam(true)} isLoading={isSaving} className="font-bold gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700">
+            <Button
+              type="button"
+              onClick={() => handleUpdateExam(true)}
+              isLoading={isSaving}
+              className="font-bold gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
               <Sparkles className="h-4 w-4" />
               <span>Terbitkan Ujian</span>
             </Button>
@@ -218,18 +345,29 @@ export default function EditExamPage() {
 
       {/* Basic Info Card */}
       <Card className="p-5 shadow-sm border-border space-y-4">
-        <h3 className="text-sm font-bold text-foreground">Informasi Pelaksanaan</h3>
+        <h3 className="text-sm font-bold text-foreground">Informasi Pelaksanaan Ujian</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div className="sm:col-span-2">
-            <label className="block font-semibold text-muted-foreground mb-1">Judul Ujian</label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-10" />
+            <label className="block font-semibold text-muted-foreground mb-1">
+              Judul Ujian <span className="text-destructive">*</span>
+            </label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="h-10 text-sm font-medium"
+              placeholder="Judul ujian..."
+            />
           </div>
           <div>
-            <label className="block font-semibold text-muted-foreground mb-1">Durasi (Menit)</label>
+            <label className="block font-semibold text-muted-foreground mb-1">
+              Durasi (Menit) <span className="text-destructive">*</span>
+            </label>
             <Input
               type="number"
+              min={1}
+              max={300}
               value={durationMinutes}
-              onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10))}
+              onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10) || 60)}
               className="h-10"
             />
           </div>
@@ -237,8 +375,10 @@ export default function EditExamPage() {
             <label className="block font-semibold text-muted-foreground mb-1">Maks. Percobaan</label>
             <Input
               type="number"
+              min={1}
+              max={10}
               value={maxAttempts}
-              onChange={(e) => setMaxAttempts(parseInt(e.target.value, 10))}
+              onChange={(e) => setMaxAttempts(parseInt(e.target.value, 10) || 1)}
               className="h-10"
             />
           </div>
@@ -265,56 +405,210 @@ export default function EditExamPage() {
 
       {/* Questions Section */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-foreground">Daftar Soal ({questions.length} Butir)</h2>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => handleAddQuestion("MULTIPLE_CHOICE")} className="text-xs">
-              + PG
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base font-bold text-foreground">Daftar Butir Soal ({questions.length} Butir)</h2>
+            <p className="text-xs text-muted-foreground">
+              Edit kalimat pertanyaan, opsi jawaban, kunci jawaban, dan bobot poin langsung di bawah ini.
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => handleAddQuestion("MULTIPLE_CHOICE")} className="text-xs font-semibold gap-1">
+              <Plus className="h-3.5 w-3.5" />
+              <span>+ PG</span>
             </Button>
-            <Button size="sm" variant="outline" onClick={() => handleAddQuestion("TRUE_FALSE")} className="text-xs">
-              + Benar/Salah
+            <Button size="sm" variant="outline" onClick={() => handleAddQuestion("TRUE_FALSE")} className="text-xs font-semibold gap-1">
+              <Plus className="h-3.5 w-3.5" />
+              <span>+ Benar/Salah</span>
             </Button>
-            <Button size="sm" variant="outline" onClick={() => handleAddQuestion("ESSAY")} className="text-xs">
-              + Esai
+            <Button size="sm" variant="outline" onClick={() => handleAddQuestion("ESSAY")} className="text-xs font-semibold gap-1">
+              <Plus className="h-3.5 w-3.5" />
+              <span>+ Esai</span>
             </Button>
           </div>
         </div>
 
         {questions.map((q, idx) => (
-          <Card key={q.id} className="p-4 shadow-sm border-border space-y-3">
-            <div className="flex items-center justify-between border-b border-border pb-2">
-              <span className="font-bold text-xs">
-                Soal #{idx + 1} ({q.type}) — {q.points} Poin
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleDeleteQuestion(q.id)}
-                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+          <Card key={q.id} className="p-5 shadow-sm border-border space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xs">
+                  {idx + 1}
+                </span>
+                <Badge variant="outline" className="text-xs font-semibold">
+                  {q.type === "MULTIPLE_CHOICE"
+                    ? "Pilihan Ganda"
+                    : q.type === "TRUE_FALSE"
+                    ? "Benar / Salah"
+                    : "Uraian / Esai"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  <span className="text-muted-foreground">Bobot:</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={q.points}
+                    onChange={(e) => updateQuestionField(idx, "points", e.target.value)}
+                    className="h-8 w-16 text-center text-xs font-bold"
+                  />
+                  <span className="text-muted-foreground">Poin</span>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Hapus butir soal ini"
+                  onClick={() => handleDeleteQuestion(q.id)}
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <p className="text-sm text-foreground">{q.questionText}</p>
-            {q.options && q.options.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                {q.options.map((opt: any) => (
-                  <div
-                    key={opt.id || opt.optionKey}
-                    className={cn(
-                      "p-2 rounded border",
-                      opt.isCorrect
-                        ? "border-emerald-500 bg-emerald-50/50 text-emerald-800 font-bold dark:bg-emerald-950/40 dark:text-emerald-300"
-                        : "border-border text-muted-foreground"
-                    )}
-                  >
-                    {opt.optionKey}. {opt.optionText} {opt.isCorrect && "✓ (Kunci)"}
-                  </div>
-                ))}
+
+            {/* Question Text Prompt */}
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                Teks Pertanyaan Soal
+              </label>
+              <Textarea
+                value={q.questionText}
+                onChange={(e) => updateQuestionField(idx, "questionText", e.target.value)}
+                rows={3}
+                placeholder="Tuliskan pertanyaan soal di sini..."
+                className="text-xs font-medium leading-relaxed resize-y"
+              />
+            </div>
+
+            {/* MULTIPLE CHOICE: 4 Editable Options with Clickable Radio Key */}
+            {q.type === "MULTIPLE_CHOICE" && (
+              <div className="space-y-2 pt-1">
+                <label className="block text-xs font-semibold text-muted-foreground">
+                  Pilihan Jawaban & Kunci Benar (Klik lingkaran/opsi untuk memilih kunci jawaban)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {q.options?.map((opt: any, optIdx: number) => {
+                    const isCorrect = Boolean(opt.isCorrect);
+                    const optKey = opt.key || String.fromCharCode(65 + optIdx);
+                    return (
+                      <div
+                        key={optIdx}
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-xl border transition-all",
+                          isCorrect
+                            ? "bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-200"
+                            : "bg-background border-border"
+                        )}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setCorrectOption(idx, optIdx)}
+                          className={cn(
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-black text-xs cursor-pointer transition-all",
+                            isCorrect
+                              ? "bg-emerald-600 text-white shadow-xs"
+                              : "bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary"
+                          )}
+                          title={isCorrect ? "Kunci Jawaban Benar" : "Jadikan Kunci Benar"}
+                        >
+                          {isCorrect ? "✓" : optKey}
+                        </button>
+                        <Input
+                          value={opt.text || ""}
+                          onChange={(e) => updateOptionText(idx, optIdx, e.target.value)}
+                          placeholder={`Teks pilihan ${optKey}...`}
+                          className="h-8 text-xs border-0 bg-transparent focus-visible:ring-0 px-1 shadow-none"
+                        />
+                        {isCorrect && (
+                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-tight shrink-0 mr-1">
+                            Kunci
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* TRUE / FALSE: 2 Joyful Option Cards */}
+            {q.type === "TRUE_FALSE" && (
+              <div className="space-y-2 pt-1">
+                <label className="block text-xs font-semibold text-muted-foreground">
+                  Kunci Jawaban Benar / Salah (Klik salah satu untuk memilih kunci)
+                </label>
+                <div className="grid grid-cols-2 gap-3 max-w-sm">
+                  {q.options?.map((opt: any, optIdx: number) => {
+                    const isCorrect = Boolean(opt.isCorrect);
+                    const isBenar = (opt.text || "").toLowerCase().includes("benar") || opt.key === "BENAR";
+                    return (
+                      <button
+                        key={optIdx}
+                        type="button"
+                        onClick={() => setCorrectOption(idx, optIdx)}
+                        className={cn(
+                          "flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer",
+                          isCorrect
+                            ? isBenar
+                              ? "bg-emerald-600 border-emerald-600 text-white shadow-md ring-2 ring-emerald-300"
+                              : "bg-rose-600 border-rose-600 text-white shadow-md ring-2 ring-rose-300"
+                            : "bg-muted/40 border-border text-foreground hover:bg-muted"
+                        )}
+                      >
+                        {isCorrect && <Check className="h-4 w-4 stroke-[3]" />}
+                        <span>{opt.text || (isBenar ? "Benar" : "Salah")}</span>
+                        {isCorrect && <span className="text-[10px] opacity-90">(Kunci)</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ESSAY: Notice */}
+            {q.type === "ESSAY" && (
+              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-blue-800 text-xs">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <HelpCircle className="h-3.5 w-3.5 text-blue-600" />
+                  <span>Soal Uraian / Esai</span>
+                </p>
+                <p className="text-[11px] text-blue-700 mt-0.5">
+                  Siswa akan menjawab dengan kolom teks terbuka. Nilai dapat diberikan oleh guru melalui menu <strong>Hasil & Nilai</strong>.
+                </p>
               </div>
             )}
           </Card>
         ))}
+      </div>
+
+      {/* Floating Bottom Save Bar */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-border shadow-lg flex items-center justify-between max-w-5xl mx-auto rounded-t-2xl z-30">
+        <div className="text-xs text-muted-foreground hidden sm:block">
+          Pastikan seluruh pertanyaan dan kunci jawaban telah terisi dengan benar sebelum menyimpan.
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/teacher/exams")}
+            className="text-xs font-semibold"
+          >
+            Batal
+          </Button>
+          <Button
+            type="button"
+            isLoading={isSaving}
+            onClick={() => handleUpdateExam(false)}
+            className="font-bold gap-1.5 text-xs bg-primary text-primary-foreground shadow-sm"
+          >
+            <Save className="h-4 w-4" />
+            <span>Simpan Semua Perubahan</span>
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -145,3 +145,55 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     );
   }
 }
+
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = await getCurrentUser();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "Sesi tidak valid." } },
+        { status: 401 }
+      );
+    }
+
+    const { id } = params;
+
+    const exam = await prisma.exam.findUnique({ where: { id } });
+    if (!exam || exam.schoolId !== session.schoolId) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "Ujian tidak ditemukan." } },
+        { status: 404 }
+      );
+    }
+
+    if (session.role === "TEACHER" && exam.teacherId !== session.userId) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "Anda tidak memiliki akses untuk menghapus ujian ini." } },
+        { status: 403 }
+      );
+    }
+
+    await prisma.exam.delete({
+      where: { id },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        schoolId: session.schoolId,
+        userId: session.userId,
+        action: "EXAM_DELETED",
+        details: `Menghapus ujian: ${exam.title} (Kode: ${exam.examCode || "-"})`,
+      },
+    }).catch(() => {});
+
+    return NextResponse.json({
+      success: true,
+      message: `Ujian "${exam.title}" berhasil dihapus.`,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Gagal menghapus ujian." } },
+      { status: 500 }
+    );
+  }
+}
