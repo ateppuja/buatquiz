@@ -26,6 +26,9 @@ import {
   Layers,
   BookOpen,
   PlusCircle,
+  Edit2,
+  Check,
+  X,
 } from "lucide-react";
 import { formatDateTimeLocal, cn } from "@/lib/utils";
 import { parseQuestionsFromRawText } from "@/lib/text-parser";
@@ -88,9 +91,16 @@ export default function CreateExamWizardPage() {
 
   // Quick Custom Subject modal state
   const [showQuickSubjectModal, setShowQuickSubjectModal] = useState(false);
+  const [quickSubjectTab, setQuickSubjectTab] = useState<"CREATE" | "MANAGE">("CREATE");
   const [quickSubjectName, setQuickSubjectName] = useState("");
   const [quickSubjectCode, setQuickSubjectCode] = useState("");
   const [isQuickSubjectSubmitting, setIsQuickSubjectSubmitting] = useState(false);
+
+  // Inline subject edit & delete state
+  const [inlineEditSubjectId, setInlineEditSubjectId] = useState<string | null>(null);
+  const [inlineEditName, setInlineEditName] = useState("");
+  const [inlineEditCode, setInlineEditCode] = useState("");
+  const [isInlineUpdating, setIsInlineUpdating] = useState(false);
 
   const handleQuickCreateSubject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +134,64 @@ export default function CreateExamWizardPage() {
       toast.error("Terjadi kesalahan sistem saat membuat mata pelajaran.");
     } finally {
       setIsQuickSubjectSubmitting(false);
+    }
+  };
+
+  const handleQuickDeleteSubject = async (subId: string, subName: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus mata pelajaran "${subName}"?`)) return;
+    try {
+      const res = await fetch(`/api/v1/teacher/subjects/${subId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Mata pelajaran "${subName}" berhasil dihapus.`);
+        setSubjects((prev) => {
+          const next = prev.filter((s) => s.id !== subId);
+          if (subjectId === subId && next.length > 0) {
+            setSubjectId(next[0].id);
+          }
+          return next;
+        });
+      } else {
+        toast.error(data.error?.message || "Gagal menghapus mata pelajaran.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat menghapus mata pelajaran.");
+    }
+  };
+
+  const handleQuickUpdateSubject = async (subId: string) => {
+    if (!inlineEditName.trim()) {
+      toast.error("Nama mata pelajaran tidak boleh kosong.");
+      return;
+    }
+    setIsInlineUpdating(true);
+    try {
+      const res = await fetch(`/api/v1/teacher/subjects/${subId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: inlineEditName.trim(),
+          code: inlineEditCode.trim().toUpperCase() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Mata pelajaran berhasil diperbarui!");
+        setSubjects((prev) =>
+          prev.map((s) =>
+            s.id === subId
+              ? { ...s, name: inlineEditName.trim(), code: inlineEditCode.trim().toUpperCase() }
+              : s
+          )
+        );
+        setInlineEditSubjectId(null);
+      } else {
+        toast.error(data.error?.message || "Gagal memperbarui mata pelajaran.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat memperbarui mata pelajaran.");
+    } finally {
+      setIsInlineUpdating(false);
     }
   };
 
@@ -549,19 +617,40 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
                 <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Mata Pelajaran <span className="text-destructive">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setShowQuickSubjectModal(true)}
-                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-                >
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span>+ Tambah Mapel Kustom</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickSubjectTab("CREATE");
+                      setShowQuickSubjectModal(true);
+                    }}
+                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span>+ Tambah</span>
+                  </button>
+                  <span className="text-slate-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickSubjectTab("MANAGE");
+                      setShowQuickSubjectModal(true);
+                    }}
+                    className="text-xs font-bold text-slate-600 hover:text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    <span>Kelola Mapel</span>
+                  </button>
+                </div>
               </div>
               <select
                 value={subjectId}
                 onChange={(e) => {
                   if (e.target.value === "ADD_CUSTOM") {
+                    setQuickSubjectTab("CREATE");
+                    setShowQuickSubjectModal(true);
+                  } else if (e.target.value === "MANAGE_CUSTOM") {
+                    setQuickSubjectTab("MANAGE");
                     setShowQuickSubjectModal(true);
                   } else {
                     setSubjectId(e.target.value);
@@ -576,6 +665,9 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
                 ))}
                 <option value="ADD_CUSTOM" className="font-bold text-primary">
                   ✨ + Tambah Mata Pelajaran Baru...
+                </option>
+                <option value="MANAGE_CUSTOM" className="font-bold text-slate-700">
+                  ⚙️ Kelola / Edit / Hapus Mata Pelajaran...
                 </option>
               </select>
             </div>
@@ -1260,65 +1352,211 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
         </DialogFooter>
       </Dialog>
 
-      {/* Modal: Quick Add Custom Subject */}
+      {/* Modal: Quick Add / Manage Custom Subjects */}
       <Dialog open={showQuickSubjectModal} onOpenChange={setShowQuickSubjectModal}>
         <DialogHeader>
-          <DialogTitle>Tambah Mata Pelajaran Kustom</DialogTitle>
-          <DialogDescription>
-            Masukkan nama mata pelajaran baru. Mata pelajaran ini langsung dapat Anda gunakan untuk ujian.
-          </DialogDescription>
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <DialogTitle>Kelola & Tambah Mata Pelajaran</DialogTitle>
+              <DialogDescription className="text-xs">
+                Tambah mata pelajaran kustom baru atau edit & hapus mata pelajaran yang sudah ada.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleQuickCreateSubject} className="space-y-4 my-2 text-xs">
-          <div>
-            <label className="block font-semibold uppercase text-muted-foreground mb-1">
-              Nama Mata Pelajaran <span className="text-destructive">*</span>
-            </label>
-            <Input
-              placeholder="Contoh: Coding & Robotika, Life Skills, Bahasa Inggris..."
-              value={quickSubjectName}
-              onChange={(e) => {
-                setQuickSubjectName(e.target.value);
-                if (!quickSubjectCode) {
-                  const words = e.target.value.trim().split(/\s+/);
-                  if (words.length >= 2) {
-                    setQuickSubjectCode(words.map((w) => w[0]).join("").toUpperCase().slice(0, 5));
-                  } else {
-                    setQuickSubjectCode(e.target.value.trim().slice(0, 3).toUpperCase());
+        {/* Tab Switcher */}
+        <div className="flex border-b border-border mb-3">
+          <button
+            type="button"
+            onClick={() => setQuickSubjectTab("CREATE")}
+            className={cn(
+              "px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer",
+              quickSubjectTab === "CREATE"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            + Tambah Mapel Baru
+          </button>
+          <button
+            type="button"
+            onClick={() => setQuickSubjectTab("MANAGE")}
+            className={cn(
+              "px-4 py-2 text-xs font-bold border-b-2 transition-all cursor-pointer",
+              quickSubjectTab === "MANAGE"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Daftar & Edit / Hapus ({subjects.length})
+          </button>
+        </div>
+
+        {quickSubjectTab === "CREATE" ? (
+          <form onSubmit={handleQuickCreateSubject} className="space-y-4 my-2 text-xs">
+            <div>
+              <label className="block font-semibold uppercase text-muted-foreground mb-1">
+                Nama Mata Pelajaran <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="Contoh: Coding & Robotika, Life Skills, Bahasa Inggris..."
+                value={quickSubjectName}
+                onChange={(e) => {
+                  setQuickSubjectName(e.target.value);
+                  if (!quickSubjectCode) {
+                    const words = e.target.value.trim().split(/\s+/);
+                    if (words.length >= 2) {
+                      setQuickSubjectCode(words.map((w) => w[0]).join("").toUpperCase().slice(0, 5));
+                    } else {
+                      setQuickSubjectCode(e.target.value.trim().slice(0, 3).toUpperCase());
+                    }
                   }
-                }
-              }}
-              required
-              className="h-10 text-xs"
-              autoFocus
-            />
-          </div>
+                }}
+                required
+                className="h-10 text-xs"
+                autoFocus
+              />
+            </div>
 
-          <div>
-            <label className="block font-semibold uppercase text-muted-foreground mb-1">
-              Kode Singkatan Mapel
-            </label>
-            <Input
-              placeholder="Contoh: COD, LS, BING..."
-              value={quickSubjectCode}
-              onChange={(e) => setQuickSubjectCode(e.target.value.toUpperCase())}
-              maxLength={10}
-              className="h-10 text-xs font-mono uppercase"
-            />
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Singkatan kode mapel untuk identifikasi (maks. 10 karakter)
-            </p>
-          </div>
+            <div>
+              <label className="block font-semibold uppercase text-muted-foreground mb-1">
+                Kode Singkatan Mapel
+              </label>
+              <Input
+                placeholder="Contoh: COD, LS, BING..."
+                value={quickSubjectCode}
+                onChange={(e) => setQuickSubjectCode(e.target.value.toUpperCase())}
+                maxLength={10}
+                className="h-10 text-xs font-mono uppercase"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Singkatan kode mapel untuk identifikasi (maks. 10 karakter)
+              </p>
+            </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setShowQuickSubjectModal(false)}>
-              Batal
-            </Button>
-            <Button type="submit" isLoading={isQuickSubjectSubmitting} className="font-bold">
-              Simpan & Pilih Mapel
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowQuickSubjectModal(false)}>
+                Tutup
+              </Button>
+              <Button type="submit" isLoading={isQuickSubjectSubmitting} className="font-bold">
+                Simpan & Pilih Mapel
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : (
+          <div className="space-y-3 my-2 text-xs">
+            <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+              {subjects.length === 0 ? (
+                <p className="text-center text-muted-foreground py-6">Belum ada mata pelajaran.</p>
+              ) : (
+                subjects.map((sub) => {
+                  const isEditingThis = inlineEditSubjectId === sub.id;
+                  return (
+                    <div
+                      key={sub.id}
+                      className={cn(
+                        "p-3 rounded-xl border transition-all flex items-center justify-between gap-2",
+                        subjectId === sub.id ? "bg-primary/5 border-primary/40" : "bg-card border-border"
+                      )}
+                    >
+                      {isEditingThis ? (
+                        <div className="flex-1 flex flex-col sm:flex-row items-center gap-2">
+                          <Input
+                            value={inlineEditName}
+                            onChange={(e) => setInlineEditName(e.target.value)}
+                            placeholder="Nama mapel"
+                            className="h-8 text-xs flex-1"
+                            autoFocus
+                          />
+                          <Input
+                            value={inlineEditCode}
+                            onChange={(e) => setInlineEditCode(e.target.value.toUpperCase())}
+                            placeholder="Kode"
+                            maxLength={10}
+                            className="h-8 text-xs font-mono uppercase w-20"
+                          />
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              type="button"
+                              size="sm"
+                              isLoading={isInlineUpdating}
+                              onClick={() => handleQuickUpdateSubject(sub.id)}
+                              className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setInlineEditSubjectId(null)}
+                              className="h-8 px-2.5"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-foreground">{sub.name}</span>
+                              <Badge variant="outline" className="text-[10px] font-mono">
+                                {sub.code}
+                              </Badge>
+                              {subjectId === sub.id && (
+                                <Badge className="text-[10px] bg-primary text-primary-foreground">
+                                  Terpilih
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              title="Edit Mata Pelajaran"
+                              onClick={() => {
+                                setInlineEditSubjectId(sub.id);
+                                setInlineEditName(sub.name);
+                                setInlineEditCode(sub.code);
+                              }}
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              title="Hapus Mata Pelajaran"
+                              onClick={() => handleQuickDeleteSubject(sub.id, sub.name)}
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowQuickSubjectModal(false)}>
+                Selesai
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
       </Dialog>
 
       {/* Modal: Text to Question Parser (Input Teks Otomatis Jadi Soal) */}

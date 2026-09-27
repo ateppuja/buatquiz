@@ -20,6 +20,8 @@ import {
   HelpCircle,
   Volume2,
   VolumeX,
+  Headphones,
+  Square,
   Sparkles,
   Award,
   Layers,
@@ -30,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { sounds } from "@/lib/sound-effects";
+import { narrator } from "@/lib/tts-narrator";
 import { ConfettiCanvas } from "@/components/ui/confetti";
 
 interface Option {
@@ -75,6 +78,9 @@ export default function ExamAttemptPage() {
   // Sound enabled
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
+  // Audio Question Narrator (TTS)
+  const [isNarrating, setIsNarrating] = useState<boolean>(false);
+
   // Modals
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,15 +91,32 @@ export default function ExamAttemptPage() {
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize sound state
+  // Initialize sound state & narrator listener
   useEffect(() => {
     setSoundEnabled(sounds.isEnabled());
+    narrator.onStateChange((speaking) => {
+      setIsNarrating(speaking);
+    });
+
+    return () => {
+      narrator.stop();
+    };
   }, []);
 
   const toggleSound = () => {
     const next = sounds.toggle();
     setSoundEnabled(next);
     toast.info(next ? "Suara diaktifkan 🔊" : "Suara dimatikan 🔇", { duration: 1500 });
+  };
+
+  const toggleNarrator = () => {
+    if (isNarrating) {
+      narrator.stop();
+      toast.info("Pembacaan soal dihentikan ⏹️", { duration: 1500 });
+    } else {
+      narrator.speakQuestion(currentIdx + 1, currentQ.questionText, currentQ.options);
+      toast.info("Membacakan soal... 🔊", { duration: 1500 });
+    }
   };
 
   // 1. Fetch Attempt Data
@@ -271,6 +294,7 @@ export default function ExamAttemptPage() {
   // Question navigation with audio
   const goToQuestion = (idx: number) => {
     if (idx < 0 || idx >= questions.length || idx === currentIdx) return;
+    narrator.stop();
     sounds.playNavigate();
     setCurrentIdx(idx);
   };
@@ -289,6 +313,7 @@ export default function ExamAttemptPage() {
 
   // 7. Submit Handlers
   const handleAutoSubmit = async () => {
+    narrator.stop();
     if (!attemptData?.attempt?.id) return;
     setIsSubmitting(true);
     try {
@@ -302,6 +327,7 @@ export default function ExamAttemptPage() {
   };
 
   const handleManualSubmit = async () => {
+    narrator.stop();
     if (!attemptData?.attempt?.id) return;
     setIsSubmitting(true);
     try {
@@ -674,6 +700,30 @@ export default function ExamAttemptPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleNarrator}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer",
+                          isNarrating
+                            ? "bg-amber-500 text-white animate-pulse ring-2 ring-amber-300"
+                            : "bg-[#EBF7D9] text-[#4B7914] hover:bg-[#D5EFA9] border border-[#D5EFA9]"
+                        )}
+                        title={isNarrating ? "Hentikan pembacaan audio" : "Bacakan soal dan pilihan jawaban"}
+                      >
+                        {isNarrating ? (
+                          <>
+                            <Square className="h-3.5 w-3.5 fill-current" />
+                            <span>Hentikan Suara</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="h-3.5 w-3.5" />
+                            <span>Bacakan Soal</span>
+                          </>
+                        )}
+                      </button>
+
                       <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60">
                         💎 {currentQ.points} Poin
                       </span>
