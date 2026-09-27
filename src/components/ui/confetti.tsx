@@ -60,10 +60,10 @@ export function ConfettiCanvas({ duration = 3000 }: ConfettiProps) {
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      particles.forEach((p) => {
+      particles.forEach((p, i) => {
         p.tiltAngle += p.tiltAngleIncremental;
         p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2;
-        p.tilt = Math.sin(p.tiltAngle - i => i / 3) * 15;
+        p.tilt = Math.sin(p.tiltAngle - i / 3) * 15;
 
         ctx.beginPath();
         ctx.lineWidth = p.r;
