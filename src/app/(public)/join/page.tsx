@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layouts/Navbar";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { KeyRound, ArrowRight, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export default function JoinPage() {
@@ -48,35 +48,37 @@ export default function JoinPage() {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#EBF7D9] via-[#F6FCED] to-[#FFFFFF] text-slate-800">
       <Navbar />
 
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <Card className="w-full max-w-md shadow-2xl border-2 border-[#D8EEB6] rounded-[32px] bg-white/95 backdrop-blur">
-          <CardHeader className="text-center pb-2 pt-6">
-            <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-2xl bg-white p-1.5 border border-[#E0F2C2] mb-3 shadow-md">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 my-auto">
+        <Card className="w-full max-w-lg shadow-2xl border-2 border-[#D8EEB6] rounded-[36px] bg-white/95 backdrop-blur p-2 sm:p-4 text-center">
+          <CardHeader className="text-center pb-2 pt-4">
+            <div className="mx-auto flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-3xl bg-white p-2 border-2 border-[#E0F2C2] mb-3 shadow-lg">
               <img
                 src="/whitebee-logo.png"
                 alt="White Bee Logo"
                 className="h-full w-full object-contain"
               />
             </div>
-            <CardTitle className="text-2xl font-black text-slate-900">Masuk Ujian Online</CardTitle>
-            <CardDescription className="text-xs text-slate-500 font-semibold max-w-xs mx-auto">
-              Masukkan 8 digit kode ujian yang diberikan oleh guru mata pelajaran White Bee School of Life
-            </CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl font-black text-slate-900">
+              White<span className="text-[#7AB82A]">Bee</span> School of Life
+            </CardTitle>
+
+            {/* Prayer message banner */}
+            <div className="mt-3 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-2xl bg-[#F4FBEB] border-2 border-[#D5EFA9] text-xs sm:text-sm font-black text-[#4B7914]">
+              <span>🤲</span>
+              <span>Berdoa terlebih dahulu sebelum mengerjakan Kuis</span>
+            </div>
           </CardHeader>
 
           <CardContent className="pt-4 pb-6 space-y-4">
-            <form onSubmit={handleLookup} className="space-y-4">
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-[#4B7914] mb-1.5 text-center">
-                  KODE AKSES UJIAN
-                </label>
+            <form onSubmit={handleLookup} className="space-y-3">
+              <div className="rounded-2xl border-2 border-[#D8EEB6] bg-[#FAFDFA] p-2 focus-within:border-[#7AB82A] focus-within:ring-4 focus-within:ring-[#7AB82A]/20 transition-all shadow-inner">
                 <Input
                   type="text"
-                  placeholder="Contoh: MTK9A2BC"
+                  placeholder="Ketik Kode Ujian..."
                   value={examCode}
                   onChange={(e) => setExamCode(e.target.value.toUpperCase())}
                   maxLength={10}
-                  className="h-14 text-center text-2xl font-mono font-black tracking-widest uppercase rounded-2xl border-2 border-[#D5EFA9] focus-visible:ring-[#7AB82A] text-slate-900"
+                  className="h-14 border-0 bg-transparent text-center text-xl sm:text-2xl font-mono font-black tracking-widest uppercase placeholder:normal-case placeholder:tracking-normal placeholder:font-bold placeholder:text-slate-400 focus-visible:ring-0 text-slate-900"
                   autoFocus
                 />
               </div>
@@ -85,28 +87,22 @@ export default function JoinPage() {
                 type="submit"
                 size="lg"
                 isLoading={isLoading}
-                className="w-full h-12 font-black rounded-2xl gap-2 bg-[#7AB82A] hover:bg-[#6AA421] text-white shadow-lg shadow-[#7AB82A]/30 text-base active:scale-98 transition-all"
+                className="w-full h-13 font-black rounded-2xl gap-2 bg-[#7AB82A] hover:bg-[#6AA421] text-white shadow-xl shadow-[#7AB82A]/30 text-base active:scale-98 transition-all"
               >
                 <span>Mulai Ujian</span>
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-5 w-5" />
               </Button>
             </form>
 
-            <div className="mt-4 rounded-2xl bg-[#F4FBEB] p-3.5 border border-[#D8EEB6] flex items-start gap-2.5 text-xs text-[#4B7914]">
-              <Sparkles className="h-4 w-4 text-[#7AB82A] shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">Kode Contoh Ujian Aktif:</p>
-                <p className="mt-0.5 font-medium">
-                  Klik untuk mencoba:{" "}
-                  <button
-                    type="button"
-                    onClick={() => setExamCode("MTK9A2BC")}
-                    className="font-mono font-black underline text-[#578A1A] hover:text-slate-900"
-                  >
-                    MTK9A2BC
-                  </button>
-                </p>
-              </div>
+            <div className="mt-4 pt-3 border-t border-[#E0F2C2] flex items-center justify-center gap-2 text-xs font-bold text-slate-500">
+              <span>Contoh Kode:</span>
+              <button
+                type="button"
+                onClick={() => setExamCode("MTK9A2BC")}
+                className="font-mono font-black px-3 py-1 rounded-xl bg-[#F4FBEB] border border-[#D5EFA9] text-[#578A1A] hover:bg-[#EBF7D9] transition-colors"
+              >
+                MTK9A2BC
+              </button>
             </div>
           </CardContent>
         </Card>
