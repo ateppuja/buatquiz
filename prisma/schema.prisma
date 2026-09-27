@@ -50,6 +50,7 @@ model User {
   auditLogs      AuditLog[]
 
   @@index([schoolId])
+  @@index([role])
   @@map("users")
 }
 
@@ -85,6 +86,7 @@ model Class {
   examClasses    ExamClass[]
 
   @@index([schoolId])
+  @@index([gradeLevel])
   @@map("classes")
 }
 
@@ -136,6 +138,8 @@ model Student {
 
   @@index([schoolId])
   @@index([classId])
+  @@index([name])
+  @@index([status])
   @@map("students")
 }
 
@@ -175,6 +179,7 @@ model Exam {
   @@index([schoolId])
   @@index([teacherId])
   @@index([examCode])
+  @@index([status])
   @@map("exams")
 }
 
