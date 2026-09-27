@@ -27,10 +27,10 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 border-r border-border bg-card flex flex-col shrink-0 min-h-[calc(100vh-4rem)]">
-      <div className="p-4 border-b border-border/60">
-        <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-semibold">
-          <ShieldCheck className="h-4 w-4" />
+    <aside className="w-64 border-r border-[#E0F2C2] bg-white flex flex-col shrink-0 min-h-[calc(100vh-4rem)]">
+      <div className="p-4 border-b border-[#E0F2C2]/70">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
+          <ShieldCheck className="h-4 w-4 text-amber-600" />
           <span>Panel Administrator</span>
         </div>
       </div>
@@ -45,13 +45,13 @@ export function AdminSidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-bold transition-all",
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-[#7AB82A] text-white shadow-sm"
+                  : "text-slate-600 hover:bg-[#F4FBEB] hover:text-[#578A1A]"
               )}
             >
-              <Icon className={cn("h-4 w-4", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+              <Icon className={cn("h-4 w-4", isActive ? "text-white" : "text-slate-500")} />
               <span>{item.label}</span>
             </Link>
           );

@@ -45,25 +45,29 @@ export default function JoinPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#EAF6FE] via-[#F4FAFF] to-[#FFFFFF] text-slate-800">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#EBF7D9] via-[#F6FCED] to-[#FFFFFF] text-slate-800">
       <Navbar />
 
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <Card className="w-full max-w-md shadow-2xl border-2 border-emerald-100 rounded-3xl bg-white/95 backdrop-blur">
+        <Card className="w-full max-w-md shadow-2xl border-2 border-[#D8EEB6] rounded-[32px] bg-white/95 backdrop-blur">
           <CardHeader className="text-center pb-2 pt-6">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 mb-3 shadow-inner text-2xl">
-              🐝
+            <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-2xl bg-white p-1.5 border border-[#E0F2C2] mb-3 shadow-md">
+              <img
+                src="/whitebee-logo.png"
+                alt="White Bee Logo"
+                className="h-full w-full object-contain"
+              />
             </div>
             <CardTitle className="text-2xl font-black text-slate-900">Masuk Ujian Online</CardTitle>
-            <CardDescription className="text-xs text-slate-500 max-w-xs mx-auto">
-              Masukkan 8 digit kode ujian yang diberikan oleh guru mata pelajaran Quiz White Bee
+            <CardDescription className="text-xs text-slate-500 font-semibold max-w-xs mx-auto">
+              Masukkan 8 digit kode ujian yang diberikan oleh guru mata pelajaran White Bee School of Life
             </CardDescription>
           </CardHeader>
 
           <CardContent className="pt-4 pb-6 space-y-4">
             <form onSubmit={handleLookup} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1.5 text-center">
+                <label className="block text-xs font-black uppercase tracking-wider text-[#4B7914] mb-1.5 text-center">
                   KODE AKSES UJIAN
                 </label>
                 <Input
@@ -72,7 +76,7 @@ export default function JoinPage() {
                   value={examCode}
                   onChange={(e) => setExamCode(e.target.value.toUpperCase())}
                   maxLength={10}
-                  className="h-14 text-center text-2xl font-mono font-black tracking-widest uppercase rounded-2xl border-2 border-emerald-200 focus-visible:ring-emerald-500 text-emerald-950"
+                  className="h-14 text-center text-2xl font-mono font-black tracking-widest uppercase rounded-2xl border-2 border-[#D5EFA9] focus-visible:ring-[#7AB82A] text-slate-900"
                   autoFocus
                 />
               </div>
@@ -81,23 +85,23 @@ export default function JoinPage() {
                 type="submit"
                 size="lg"
                 isLoading={isLoading}
-                className="w-full h-12 font-black rounded-2xl gap-2 bg-[#2EB85C] hover:bg-[#279B4D] text-white shadow-lg shadow-emerald-600/30 text-base"
+                className="w-full h-12 font-black rounded-2xl gap-2 bg-[#7AB82A] hover:bg-[#6AA421] text-white shadow-lg shadow-[#7AB82A]/30 text-base active:scale-98 transition-all"
               >
                 <span>Mulai Ujian</span>
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </form>
 
-            <div className="mt-4 rounded-2xl bg-emerald-50/80 p-3.5 border border-emerald-200/80 flex items-start gap-2.5 text-xs text-emerald-900">
-              <Sparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="mt-4 rounded-2xl bg-[#F4FBEB] p-3.5 border border-[#D8EEB6] flex items-start gap-2.5 text-xs text-[#4B7914]">
+              <Sparkles className="h-4 w-4 text-[#7AB82A] shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">Kode Contoh Ujian Aktif:</p>
-                <p className="mt-0.5">
+                <p className="font-bold">Kode Contoh Ujian Aktif:</p>
+                <p className="mt-0.5 font-medium">
                   Klik untuk mencoba:{" "}
                   <button
                     type="button"
                     onClick={() => setExamCode("MTK9A2BC")}
-                    className="font-mono font-black underline text-emerald-700 hover:text-emerald-950"
+                    className="font-mono font-black underline text-[#578A1A] hover:text-slate-900"
                   >
                     MTK9A2BC
                   </button>

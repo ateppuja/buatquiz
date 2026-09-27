@@ -82,11 +82,15 @@ export default function ExamInstructionsPage() {
         <div className="w-full max-w-2xl bg-white/95 backdrop-blur-md rounded-[32px] sm:rounded-[40px] shadow-2xl border-4 border-white p-6 sm:p-8">
           {/* Header Badge */}
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-slate-100 pb-4">
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-[#00C0FA] to-[#80D235] text-white shadow-sm font-bold text-sm">
-                🐝
-              </span>
-              <span className="font-mono font-black text-xs bg-[#00C0FA]/10 text-[#0093BE] px-3 py-1.5 rounded-xl border border-[#00C0FA]/20">
+            <div className="flex items-center gap-2.5">
+              <div className="relative h-9 w-9 shrink-0 rounded-xl overflow-hidden bg-white p-0.5 border border-[#E0F2C2] shadow-xs">
+                <img
+                  src="/whitebee-logo.png"
+                  alt="White Bee Logo"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <span className="font-mono font-black text-xs bg-[#EBF7D9] text-[#4B7914] px-3 py-1.5 rounded-xl border border-[#D5EFA9]">
                 KODE: {studentData.exam.examCode}
               </span>
             </div>

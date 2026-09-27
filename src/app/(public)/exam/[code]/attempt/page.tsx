@@ -328,15 +328,20 @@ export default function ExamAttemptPage() {
 
   if (isLoading || !attemptData || questions.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#DDF3FD] via-[#E6F8FE] to-[#EFFDF4]">
-        <div className="text-center space-y-4 bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-white">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#EBF7D9] via-[#F4FBEB] to-[#EFFDF4]">
+        <div className="text-center space-y-4 bg-white/90 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-white">
           <div className="relative flex items-center justify-center">
-            <Loader2 className="h-12 w-12 animate-spin text-[#00C0FA] mx-auto" />
-            <span className="absolute text-xl">🐝</span>
+            <div className="h-16 w-16 rounded-2xl overflow-hidden bg-white p-1 shadow-md border border-[#E0F2C2] mx-auto">
+              <img
+                src="/whitebee-logo.png"
+                alt="White Bee Logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-800">Menyiapkan Ruang Ujian Ceria</h3>
-            <p className="text-sm font-medium text-slate-500 mt-1">Quiz White Bee School of Life...</p>
+            <h3 className="text-lg font-black text-slate-800">Menyiapkan Ruang Ujian Ceria</h3>
+            <p className="text-xs font-bold text-[#578A1A] mt-1">White Bee School of Life</p>
           </div>
         </div>
       </div>
@@ -374,21 +379,25 @@ export default function ExamAttemptPage() {
       {/* Decorative Cloud & Bubble Background Accents */}
       <div className="absolute top-4 left-8 w-32 h-14 bg-white/40 rounded-full blur-sm pointer-events-none" />
       <div className="absolute top-12 right-12 w-44 h-16 bg-white/35 rounded-full blur-sm pointer-events-none" />
-      <div className="absolute bottom-16 left-1/4 w-56 h-20 bg-[#80D235]/10 rounded-full blur-xl pointer-events-none" />
+      <div className="absolute bottom-16 left-1/4 w-56 h-20 bg-[#7AB82A]/15 rounded-full blur-xl pointer-events-none" />
 
       {/* TOP FLOATING APP BAR */}
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-5 pb-2">
         <div className="flex items-center justify-between gap-2">
           {/* Brand & Mascot Badge */}
-          <div className="flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl shadow-sm border border-white/80">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-[#00C0FA] to-[#80D235] text-white shadow-sm font-bold text-base">
-              🐝
+          <div className="flex items-center gap-2.5 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-2xl shadow-sm border border-white">
+            <div className="relative h-8 w-8 shrink-0 rounded-xl overflow-hidden bg-white p-0.5 border border-[#E0F2C2] shadow-xs">
+              <img
+                src="/whitebee-logo.png"
+                alt="White Bee Logo"
+                className="h-full w-full object-contain"
+              />
             </div>
             <div className="leading-tight hidden sm:block">
-              <span className="font-extrabold text-xs tracking-tight text-slate-800 block">
-                Quiz White Bee
+              <span className="font-black text-xs tracking-tight text-slate-900 block">
+                White<span className="text-[#7AB82A]">Bee</span>
               </span>
-              <span className="text-[10px] font-semibold text-emerald-600 block">
+              <span className="text-[10px] font-bold text-[#578A1A] block">
                 {attemptData.exam.title}
               </span>
             </div>

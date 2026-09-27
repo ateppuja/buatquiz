@@ -93,13 +93,22 @@ export default function ExamResultPage() {
         {/* Main Congratulations & Score Card */}
         <div className="bg-white/95 backdrop-blur-md rounded-[32px] sm:rounded-[40px] shadow-2xl border-4 border-white p-6 sm:p-10 text-center relative overflow-hidden">
           
-          {/* Mascot Trophy Icon */}
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-[#00C0FA] to-[#80D235] text-white mb-4 shadow-xl ring-4 ring-white">
-            <Trophy className="h-10 w-10" />
+          {/* Official Mascot & Trophy */}
+          <div className="mx-auto flex items-center justify-center gap-3 mb-4">
+            <div className="h-18 w-18 rounded-3xl overflow-hidden bg-white p-1 border-2 border-[#E0F2C2] shadow-xl ring-4 ring-white">
+              <img
+                src="/whitebee-logo.png"
+                alt="White Bee Logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
+            <div className="flex h-18 w-18 items-center justify-center rounded-3xl bg-[#7AB82A] text-white shadow-xl ring-4 ring-white">
+              <Trophy className="h-9 w-9" />
+            </div>
           </div>
 
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-wider mb-2 border border-emerald-200">
-            <Sparkles className="h-3.5 w-3.5" /> Ujian Selesai Dikumpulkan
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#EBF7D9] text-[#4B7914] text-xs font-black uppercase tracking-wider mb-2 border border-[#D5EFA9]">
+            <Sparkles className="h-3.5 w-3.5 text-[#7AB82A]" /> Ujian Selesai Dikumpulkan
           </span>
 
           <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight mb-2">

@@ -57,33 +57,37 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-gradient-to-b from-[#EAF6FE] via-[#F4FAFF] to-[#FFFFFF] text-slate-800">
+    <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-gradient-to-b from-[#EBF7D9] via-[#F6FCED] to-[#FFFFFF] text-slate-800">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <Link href="/" className="inline-flex items-center gap-2.5 mb-2 hover:scale-102 transition-transform">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2EB85C] text-white shadow-lg shadow-emerald-500/20 text-2xl font-bold">
-              🐝
+          <Link href="/" className="inline-flex items-center gap-3 mb-2 hover:scale-[1.02] transition-transform">
+            <div className="h-14 w-14 rounded-2xl overflow-hidden bg-white p-1 shadow-md border border-[#E0F2C2]">
+              <img
+                src="/whitebee-logo.png"
+                alt="White Bee Logo"
+                className="h-full w-full object-contain"
+              />
             </div>
             <div className="text-left">
               <span className="text-xl font-black tracking-tight text-slate-900 block">
-                Quiz White Bee
+                White<span className="text-[#7AB82A]">Bee</span>
               </span>
-              <span className="text-xs font-bold text-emerald-800">School of Life</span>
+              <span className="text-xs font-extrabold text-[#578A1A]">School of Life</span>
             </div>
           </Link>
         </div>
 
-        <Card className="shadow-2xl border-2 border-emerald-100 rounded-3xl bg-white/95 backdrop-blur">
+        <Card className="shadow-2xl border-2 border-[#D8EEB6] rounded-[32px] bg-white/95 backdrop-blur">
           <CardHeader className="space-y-1 text-center pb-2 pt-6">
             <CardTitle className="text-2xl font-black text-slate-900">Portal Guru & Admin</CardTitle>
-            <CardDescription className="text-xs text-slate-500">
+            <CardDescription className="text-xs text-slate-500 font-semibold">
               Masuk untuk mengelola ujian, bank soal, dan laporan penilaian
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pb-6">
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">
+                <label className="block text-xs font-black uppercase tracking-wider text-[#4B7914] mb-1">
                   Username atau Email
                 </label>
                 <Input
@@ -92,14 +96,14 @@ export default function LoginPage() {
                   value={usernameOrEmail}
                   onChange={(e) => setUsernameOrEmail(e.target.value)}
                   required
-                  className="h-11 rounded-xl border-emerald-200 focus-visible:ring-emerald-500"
+                  className="h-12 rounded-2xl border-2 border-[#D5EFA9] focus-visible:ring-[#7AB82A]"
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-1">
-                  Kata Sandi
+                <label className="block text-xs font-black uppercase tracking-wider text-[#4B7914] mb-1">
+                  Password
                 </label>
                 <Input
                   type="password"
@@ -107,7 +111,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-11 rounded-xl border-emerald-200 focus-visible:ring-emerald-500"
+                  className="h-12 rounded-2xl border-2 border-[#D5EFA9] focus-visible:ring-[#7AB82A]"
                 />
               </div>
 
@@ -115,42 +119,49 @@ export default function LoginPage() {
                 type="submit"
                 size="lg"
                 isLoading={isLoading}
-                className="w-full font-black rounded-xl gap-2 bg-[#2EB85C] hover:bg-[#279B4D] text-white shadow-md shadow-emerald-600/30"
+                className="w-full h-12 font-black rounded-2xl gap-2 bg-[#7AB82A] hover:bg-[#6AA421] text-white shadow-lg shadow-[#7AB82A]/30 text-base active:scale-98 transition-all"
               >
                 <LogIn className="h-4 w-4" />
-                <span>Masuk ke Dashboard</span>
+                <span>Masuk Sekarang</span>
               </Button>
             </form>
 
-            {/* Quick Demo Credentials Fill Buttons */}
-            <div className="mt-6 border-t border-emerald-100 pt-4">
-              <p className="text-xs font-bold text-slate-500 text-center mb-2.5">
-                Pilih Akun Demo untuk Pengujian Cepat:
+            {/* Quick Demo Fill Buttons for Ease of Use */}
+            <div className="pt-4 border-t border-[#E0F2C2] space-y-2">
+              <p className="text-[11px] font-bold text-slate-500 text-center uppercase tracking-wider">
+                Akun Demo Cepat:
               </p>
               <div className="grid grid-cols-2 gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleQuickFill("admin", "admin123")}
-                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors shadow-xs"
+                  className="text-xs font-bold gap-1.5 border-[#D5EFA9] hover:bg-[#F4FBEB] rounded-xl"
                 >
-                  <Shield className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Admin Sekolah</span>
-                </button>
-                <button
+                  <Shield className="h-3.5 w-3.5 text-amber-500" />
+                  <span>Akun Admin</span>
+                </Button>
+                <Button
                   type="button"
-                  onClick={() => handleQuickFill("budi", "guru123")}
-                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 text-xs font-bold hover:bg-emerald-100 transition-colors shadow-xs"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuickFill("guru.budi", "guru123")}
+                  className="text-xs font-bold gap-1.5 border-[#D5EFA9] hover:bg-[#F4FBEB] rounded-xl"
                 >
-                  <BookOpen className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Pak Budi (Guru)</span>
-                </button>
+                  <BookOpen className="h-3.5 w-3.5 text-[#7AB82A]" />
+                  <span>Guru Budi</span>
+                </Button>
               </div>
             </div>
 
-            <div className="mt-4 text-center">
-              <Link href="/join" className="text-xs text-[#2EB85C] font-bold hover:underline inline-flex items-center gap-1">
+            <div className="pt-2 text-center">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#7AB82A] transition-colors"
+              >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                <span>Masuk sebagai Murid (Gunakan Kode Ujian)</span>
+                <span>Kembali ke Halaman Masuk Ujian Murid</span>
               </Link>
             </div>
           </CardContent>
