@@ -34,6 +34,7 @@ import {
   ListFilter,
   ChevronRight,
   RotateCcw,
+  Printer,
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -616,6 +617,19 @@ export default function TeacherExamsPage() {
                         </a>
                       </>
                     )}
+
+                    {/* Print / PDF Exam Paper Button */}
+                    <Link href={`/teacher/exams/${exam.id}/print`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs font-bold text-slate-700 border-slate-300 hover:bg-slate-100 bg-white"
+                        title="Cetak Naskah Soal Ujian atau Simpan ke PDF"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-slate-600" />
+                        <span>Cetak / PDF</span>
+                      </Button>
+                    </Link>
 
                     {/* Edit Exam Button (Available for ALL statuses) */}
                     <Link href={`/teacher/exams/${exam.id}/edit`}>

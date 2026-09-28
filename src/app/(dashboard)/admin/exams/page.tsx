@@ -23,6 +23,7 @@ import {
   BookOpen,
   RotateCcw,
   Loader2,
+  Printer,
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -454,6 +455,19 @@ export default function AdminAllExamsPage() {
                         <span>Monitoring</span>
                       </Button>
                     </Link>
+                    {/* Print / PDF Button */}
+                    <Link href={`/teacher/exams/${exam.id}/print`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-100 bg-white"
+                        title="Cetak naskah soal ujian atau simpan ke PDF"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-slate-600" />
+                        <span>Cetak / PDF</span>
+                      </Button>
+                    </Link>
+
                     <Link href={`/teacher/exams/${exam.id}/results`}>
                       <Button size="sm" className="gap-1 text-xs font-bold bg-[#7AB82A] hover:bg-[#689f22] text-white shadow-2xs">
                         <BarChart3 className="h-3.5 w-3.5" />

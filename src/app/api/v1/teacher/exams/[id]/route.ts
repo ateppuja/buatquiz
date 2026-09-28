@@ -21,6 +21,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const exam = await prisma.exam.findUnique({
       where: { id },
       include: {
+        school: { select: { name: true } },
         subject: true,
         teacher: { select: { id: true, name: true, email: true } },
         examClasses: { include: { class: true } },

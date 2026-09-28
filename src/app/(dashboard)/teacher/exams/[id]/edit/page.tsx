@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
   CheckCircle,
   HelpCircle,
   CopyPlus,
+  Printer,
 } from "lucide-react";
 import { formatDateTimeLocal, parseDateInput, cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -337,6 +339,18 @@ export default function EditExamPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/teacher/exams/${examId}/print`}>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-1.5 text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-100 bg-white"
+              title="Cetak naskah soal ujian atau unduh PDF"
+            >
+              <Printer className="h-4 w-4 text-slate-600" />
+              <span>Cetak / PDF</span>
+            </Button>
+          </Link>
+
           <Button
             type="button"
             variant="outline"
