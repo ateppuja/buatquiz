@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layouts/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Sparkles, Heart } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export default function LandingPage() {
@@ -42,11 +42,6 @@ export default function LandingPage() {
       toast.error("Gagal memeriksa kode ujian.");
       setIsLoading(false);
     }
-  };
-
-  const handleUseDemoCode = (code: string) => {
-    setExamCode(code);
-    toast.info(`Kode ujian ${code} dimasukkan! Klik Mulai Ujian.`);
   };
 
   return (
@@ -109,18 +104,6 @@ export default function LandingPage() {
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </form>
-
-            {/* Demo Code Helper */}
-            <div className="mt-5 pt-4 border-t border-[#E0F2C2] flex items-center justify-center gap-2 text-xs font-bold text-slate-500 relative z-10">
-              <span>Contoh Kode:</span>
-              <button
-                type="button"
-                onClick={() => handleUseDemoCode("MTK9A2BC")}
-                className="font-mono font-black px-3 py-1 rounded-xl bg-[#F4FBEB] border border-[#D5EFA9] text-[#578A1A] hover:bg-[#EBF7D9] transition-colors"
-              >
-                MTK9A2BC
-              </button>
-            </div>
 
           </div>
 

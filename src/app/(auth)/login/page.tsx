@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogIn, Shield, BookOpen, ArrowLeft } from "lucide-react";
+import { LogIn, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -32,7 +32,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        toast.error(data.error?.message || "Login gagal.");
+        toast.error(data.error?.message || "Login gagal. Periksa username dan password Anda.");
         setIsLoading(false);
         return;
       }
@@ -49,11 +49,6 @@ export default function LoginPage() {
       toast.error("Terjadi kesalahan pada server saat login.");
       setIsLoading(false);
     }
-  };
-
-  const handleQuickFill = (u: string, p: string) => {
-    setUsernameOrEmail(u);
-    setPassword(p);
   };
 
   return (
@@ -92,7 +87,7 @@ export default function LoginPage() {
                 </label>
                 <Input
                   type="text"
-                  placeholder="admin atau budi"
+                  placeholder="Masukkan username atau email"
                   value={usernameOrEmail}
                   onChange={(e) => setUsernameOrEmail(e.target.value)}
                   required
@@ -126,36 +121,7 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Quick Demo Fill Buttons for Ease of Use */}
-            <div className="pt-4 border-t border-[#E0F2C2] space-y-2">
-              <p className="text-[11px] font-bold text-slate-500 text-center uppercase tracking-wider">
-                Akun Demo Cepat:
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickFill("admin", "admin123")}
-                  className="text-xs font-bold gap-1.5 border-[#D5EFA9] hover:bg-[#F4FBEB] rounded-xl"
-                >
-                  <Shield className="h-3.5 w-3.5 text-amber-500" />
-                  <span>Akun Admin</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickFill("guru.budi", "guru123")}
-                  className="text-xs font-bold gap-1.5 border-[#D5EFA9] hover:bg-[#F4FBEB] rounded-xl"
-                >
-                  <BookOpen className="h-3.5 w-3.5 text-[#7AB82A]" />
-                  <span>Guru Budi</span>
-                </Button>
-              </div>
-            </div>
-
-            <div className="pt-2 text-center">
+            <div className="pt-2 text-center border-t border-[#E0F2C2] mt-4">
               <Link
                 href="/"
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#7AB82A] transition-colors"
