@@ -75,11 +75,18 @@ export default function ExamInstructionsPage() {
       : "Rata-rata Seluruh Percobaan";
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#DDF3FD] via-[#E8F8FE] to-[#EFFDF4] text-slate-800">
-      <Navbar />
+    <div
+      className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat relative text-slate-800"
+      style={{ backgroundImage: "url('/bg-hero.jpg')" }}
+    >
+      {/* Soft Nature Overlay for High Readability & Contrast */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#EBF7D9]/85 via-[#F6FCED]/88 to-[#FFFFFF]/92 backdrop-blur-[1.5px] -z-0 pointer-events-none" />
 
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 my-4">
-        <div className="w-full max-w-2xl bg-white/95 backdrop-blur-md rounded-[32px] sm:rounded-[40px] shadow-2xl border-4 border-white p-6 sm:p-8">
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Navbar />
+
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 my-4">
+          <div className="w-full max-w-2xl bg-white/95 backdrop-blur-xl rounded-[32px] sm:rounded-[40px] shadow-2xl border-2 border-[#D8EEB6]/90 p-6 sm:p-8">
           {/* Header Badge */}
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2.5">
@@ -191,6 +198,7 @@ export default function ExamInstructionsPage() {
             </Button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

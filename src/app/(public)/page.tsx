@@ -45,15 +45,22 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#EBF7D9] via-[#F6FCED] to-[#FFFFFF] text-slate-800 font-sans selection:bg-[#7AB82A] selection:text-white">
-      <Navbar />
+    <div
+      className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat relative text-slate-800 font-sans selection:bg-[#7AB82A] selection:text-white"
+      style={{ backgroundImage: "url('/bg-hero.jpg')" }}
+    >
+      {/* Soft Nature Overlay for High Readability & Contrast */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#EBF7D9]/85 via-[#F6FCED]/88 to-[#FFFFFF]/92 backdrop-blur-[1.5px] -z-0 pointer-events-none" />
 
-      {/* CENTERED DIRECT QUIZ ACCESS WORKSPACE */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-auto">
-        <div className="w-full max-w-lg">
-          
-          {/* Main Focused Card */}
-          <div className="rounded-[36px] bg-white/95 backdrop-blur-md p-6 sm:p-10 shadow-2xl border-2 border-[#D8EEB6] text-center relative overflow-hidden">
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Navbar />
+
+        {/* CENTERED DIRECT QUIZ ACCESS WORKSPACE */}
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-auto">
+          <div className="w-full max-w-lg">
+            
+            {/* Main Focused Card */}
+            <div className="rounded-[36px] bg-white/95 backdrop-blur-xl p-6 sm:p-10 shadow-2xl border-2 border-[#D8EEB6]/90 text-center relative overflow-hidden">
             
             {/* Ambient Background Glow */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-[#EBF7D9] rounded-full blur-3xl -z-0 pointer-events-none" />
@@ -121,9 +128,10 @@ export default function LandingPage() {
       </main>
 
       {/* Minimal Footer */}
-      <footer className="py-4 text-center text-xs font-semibold text-slate-400">
+      <footer className="py-4 text-center text-xs font-semibold text-slate-500">
         © 2026 White Bee School of Life. All rights reserved.
       </footer>
+      </div>
     </div>
   );
 }

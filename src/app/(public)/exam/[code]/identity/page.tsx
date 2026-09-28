@@ -120,13 +120,20 @@ export default function ExamIdentityPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
-      <Navbar />
+    <div
+      className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat relative text-slate-800"
+      style={{ backgroundImage: "url('/bg-hero.jpg')" }}
+    >
+      {/* Soft Nature Overlay for High Readability & Contrast */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#EBF7D9]/85 via-[#F6FCED]/88 to-[#FFFFFF]/92 backdrop-blur-[1.5px] -z-0 pointer-events-none" />
 
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-xl space-y-6">
-          {/* Exam Summary Banner */}
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Navbar />
+
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+          <div className="w-full max-w-xl space-y-6">
+            {/* Exam Summary Banner */}
+            <div className="rounded-3xl border-2 border-[#D8EEB6]/90 bg-white/95 backdrop-blur-xl p-5 shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3 mb-3">
               <div className="flex items-center gap-2">
                 <span className="font-mono font-bold text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-md">
@@ -225,26 +232,12 @@ export default function ExamIdentityPage() {
                   </div>
                 )}
 
-                {/* Demo Helper Pill */}
-                <div className="rounded-lg bg-slate-100 dark:bg-slate-900 p-3 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                  <span>
-                    Contoh Siswa Kelas IX A: <strong>Ahmad Fauzi</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setName("Ahmad Fauzi");
-                      if (examData.eligibleClasses?.length > 0) {
-                        setClassId(examData.eligibleClasses[0].id);
-                      }
-                    }}
-                    className="text-primary font-bold hover:underline"
-                  >
-                    Isi Otomatis
-                  </button>
-                </div>
-
-                <Button type="submit" size="lg" isLoading={isSubmitting} className="w-full font-semibold gap-2 mt-4">
+                <Button
+                  type="submit"
+                  size="lg"
+                  isLoading={isSubmitting}
+                  className="w-full h-12 font-black rounded-2xl gap-2 mt-4 bg-[#7AB82A] hover:bg-[#6AA421] text-white shadow-lg shadow-[#7AB82A]/30 text-base active:scale-98 transition-all"
+                >
                   <span>Verifikasi & Lanjutkan</span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -252,6 +245,7 @@ export default function ExamIdentityPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </div>
   );

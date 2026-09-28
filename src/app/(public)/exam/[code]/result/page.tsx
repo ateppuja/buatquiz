@@ -85,13 +85,20 @@ export default function ExamResultPage() {
   const finalScore = examResult?.finalScore ?? currentAttempt.finalScore ?? 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#DDF3FD] via-[#E8F8FE] to-[#EFFDF4] text-slate-800 pb-16">
-      {showConfetti && <ConfettiCanvas duration={4000} />}
-      <Navbar />
+    <div
+      className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat relative text-slate-800 pb-16"
+      style={{ backgroundImage: "url('/bg-hero.jpg')" }}
+    >
+      {/* Soft Nature Overlay for High Readability & Contrast */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#EBF7D9]/85 via-[#F6FCED]/88 to-[#FFFFFF]/92 backdrop-blur-[1.5px] -z-0 pointer-events-none" />
 
-      <div className="container mx-auto max-w-3xl px-3 sm:px-6 pt-6 sm:pt-8 space-y-6">
-        {/* Main Congratulations & Score Card */}
-        <div className="bg-white/95 backdrop-blur-md rounded-[32px] sm:rounded-[40px] shadow-2xl border-4 border-white p-6 sm:p-10 text-center relative overflow-hidden">
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {showConfetti && <ConfettiCanvas duration={4000} />}
+        <Navbar />
+
+        <div className="container mx-auto max-w-3xl px-3 sm:px-6 pt-6 sm:pt-8 space-y-6">
+          {/* Main Congratulations & Score Card */}
+          <div className="bg-white/95 backdrop-blur-xl rounded-[32px] sm:rounded-[40px] shadow-2xl border-2 border-[#D8EEB6]/90 p-6 sm:p-10 text-center relative overflow-hidden">
           
           {/* Official Mascot & Trophy */}
           <div className="mx-auto flex items-center justify-center gap-3 mb-4">
@@ -320,6 +327,7 @@ export default function ExamResultPage() {
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

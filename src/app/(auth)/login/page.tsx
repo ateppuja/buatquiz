@@ -52,8 +52,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-gradient-to-b from-[#EBF7D9] via-[#F6FCED] to-[#FFFFFF] text-slate-800">
-      <div className="w-full max-w-md space-y-6">
+    <div
+      className="min-h-screen flex flex-col justify-center items-center p-4 bg-cover bg-center bg-no-repeat relative text-slate-800"
+      style={{ backgroundImage: "url('/bg-hero.jpg')" }}
+    >
+      {/* Soft Nature Overlay for High Readability & Contrast */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#EBF7D9]/85 via-[#F6FCED]/88 to-[#FFFFFF]/92 backdrop-blur-[1.5px] -z-0 pointer-events-none" />
+
+      <div className="w-full max-w-md space-y-6 relative z-10">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-3 mb-2 hover:scale-[1.02] transition-transform">
             <div className="h-14 w-14 rounded-2xl overflow-hidden bg-white p-1 shadow-md border border-[#E0F2C2]">
@@ -72,7 +78,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <Card className="shadow-2xl border-2 border-[#D8EEB6] rounded-[32px] bg-white/95 backdrop-blur">
+        <Card className="shadow-2xl border-2 border-[#D8EEB6]/90 rounded-[32px] bg-white/95 backdrop-blur-xl">
           <CardHeader className="space-y-1 text-center pb-2 pt-6">
             <CardTitle className="text-2xl font-black text-slate-900">Portal Guru & Admin</CardTitle>
             <CardDescription className="text-xs text-slate-500 font-semibold">
