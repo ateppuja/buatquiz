@@ -38,7 +38,7 @@ export default function TeacherExamsPage() {
 
   const loadExams = async () => {
     try {
-      const res = await fetch("/api/v1/teacher/exams");
+      const res = await fetch(`/api/v1/teacher/exams?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setExams(data.data);
@@ -89,7 +89,8 @@ export default function TeacherExamsPage() {
       const data = await res.json();
       if (data.success) {
         toast.success(`Ujian "${title}" berhasil dihapus.`);
-        loadExams();
+        setExams((prev) => prev.filter((e) => e.id !== examId));
+        await loadExams();
       } else {
         toast.error(data.error?.message || "Gagal menghapus ujian.");
       }

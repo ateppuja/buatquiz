@@ -41,7 +41,7 @@ export default function TeacherSubjectsPage() {
 
   const loadSubjects = async () => {
     try {
-      const res = await fetch("/api/v1/teacher/subjects");
+      const res = await fetch(`/api/v1/teacher/subjects?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) setSubjects(data.data);
     } catch {

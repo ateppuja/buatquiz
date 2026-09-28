@@ -20,7 +20,7 @@ export default function AdminSubjectsPage() {
 
   const loadSubjects = async () => {
     try {
-      const res = await fetch("/api/v1/admin/subjects");
+      const res = await fetch(`/api/v1/admin/subjects?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) setSubjects(data.data);
     } catch {

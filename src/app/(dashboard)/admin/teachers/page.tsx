@@ -57,8 +57,8 @@ export default function AdminTeachersPage() {
   const loadData = async () => {
     try {
       const [resT, resC] = await Promise.all([
-        fetch("/api/v1/admin/teachers"),
-        fetch("/api/v1/admin/classes"),
+        fetch(`/api/v1/admin/teachers?_t=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/v1/admin/classes?_t=${Date.now()}`, { cache: "no-store" }),
       ]);
 
       const [dataT, dataC] = await Promise.all([
@@ -108,7 +108,7 @@ export default function AdminTeachersPage() {
         setUsername("");
         setPassword("");
         setSelectedClassIds([]);
-        loadData();
+        await loadData();
       } else {
         toast.error(data.error?.message || "Gagal membuat guru.");
       }
@@ -156,7 +156,7 @@ export default function AdminTeachersPage() {
       if (data.success) {
         toast.success(`Data guru ${editName} berhasil diperbarui!`);
         setEditingTeacher(null);
-        loadData();
+        await loadData();
       } else {
         toast.error(data.error?.message || "Gagal memperbarui data guru.");
       }
@@ -170,17 +170,20 @@ export default function AdminTeachersPage() {
   const handleDeleteTeacher = async () => {
     if (!deletingTeacher) return;
 
+    const idToDelete = deletingTeacher.id;
+    const nameToDelete = deletingTeacher.name;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/v1/admin/teachers/${deletingTeacher.id}`, {
+      const res = await fetch(`/api/v1/admin/teachers/${idToDelete}`, {
         method: "DELETE",
       });
 
       const data = await res.json();
       if (data.success) {
-        toast.success(`Akun guru ${deletingTeacher.name} berhasil dihapus.`);
+        toast.success(`Akun guru ${nameToDelete} berhasil dihapus.`);
+        setTeachers((prev) => prev.filter((t) => t.id !== idToDelete));
         setDeletingTeacher(null);
-        loadData();
+        await loadData();
       } else {
         toast.error(data.error?.message || "Gagal menghapus akun guru.");
       }

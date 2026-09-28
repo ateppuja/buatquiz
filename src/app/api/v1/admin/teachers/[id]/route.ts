@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, hashPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
     const session = await getCurrentUser();

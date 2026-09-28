@@ -48,7 +48,7 @@ export default function AdminClassesPage() {
 
   const loadClasses = async () => {
     try {
-      const res = await fetch("/api/v1/admin/classes");
+      const res = await fetch(`/api/v1/admin/classes?_t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) setClasses(data.data);
     } catch {
@@ -99,7 +99,7 @@ export default function AdminClassesPage() {
         setGradeLevel(7);
         setIsCustomGrade(false);
         setCustomGradeInput("");
-        loadClasses();
+        await loadClasses();
       } else {
         toast.error(data.error?.message || "Gagal membuat kelas.");
       }
@@ -149,7 +149,7 @@ export default function AdminClassesPage() {
       if (data.success) {
         toast.success(`Kelas ${editName} berhasil diperbarui!`);
         setEditingClass(null);
-        loadClasses();
+        await loadClasses();
       } else {
         toast.error(data.error?.message || "Gagal memperbarui kelas.");
       }
@@ -162,16 +162,19 @@ export default function AdminClassesPage() {
 
   const handleDeleteClass = async () => {
     if (!deletingClass) return;
+    const idToDelete = deletingClass.id;
+    const nameToDelete = deletingClass.name;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/v1/admin/classes/${deletingClass.id}`, {
+      const res = await fetch(`/api/v1/admin/classes/${idToDelete}`, {
         method: "DELETE",
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Kelas ${deletingClass.name} berhasil dihapus.`);
+        toast.success(`Kelas ${nameToDelete} berhasil dihapus.`);
+        setClasses((prev) => prev.filter((c) => c.id !== idToDelete));
         setDeletingClass(null);
-        loadClasses();
+        await loadClasses();
       } else {
         toast.error(data.error?.message || "Gagal menghapus kelas.");
       }

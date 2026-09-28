@@ -27,7 +27,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function loadStats() {
       try {
-        const res = await fetch("/api/v1/admin/stats");
+        const res = await fetch(`/api/v1/admin/stats?_t=${Date.now()}`, { cache: "no-store" });
         const data = await res.json();
         if (data.success) {
           setStats(data.data);

@@ -60,8 +60,8 @@ export default function AdminStudentsPage() {
   const loadData = async () => {
     try {
       const [resS, resC] = await Promise.all([
-        fetch("/api/v1/admin/students"),
-        fetch("/api/v1/admin/classes"),
+        fetch(`/api/v1/admin/students?_t=${Date.now()}`, { cache: "no-store" }),
+        fetch(`/api/v1/admin/classes?_t=${Date.now()}`, { cache: "no-store" }),
       ]);
       const [dataS, dataC] = await Promise.all([resS.json(), resC.json()]);
 
@@ -103,7 +103,7 @@ export default function AdminStudentsPage() {
         setNis("");
         setName("");
         setPin("");
-        loadData();
+        await loadData();
       } else {
         toast.error(data.error?.message || "Gagal menambahkan murid.");
       }
@@ -147,8 +147,24 @@ export default function AdminStudentsPage() {
       const data = await res.json();
       if (data.success) {
         toast.success(`Data murid ${editName} berhasil diperbarui!`);
+        // Optimistic UI update
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === editingStudent.id
+              ? {
+                  ...s,
+                  name: editName.trim(),
+                  nis: editNis.trim(),
+                  classId: editClassId,
+                  gender: editGender,
+                  pin: editPin.trim(),
+                  class: classes.find((c) => c.id === editClassId) || s.class,
+                }
+              : s
+          )
+        );
         setEditingStudent(null);
-        loadData();
+        await loadData();
       } else {
         toast.error(data.error?.message || "Gagal memperbarui data murid.");
       }
@@ -162,17 +178,21 @@ export default function AdminStudentsPage() {
   const handleDeleteStudent = async () => {
     if (!deletingStudent) return;
 
+    const idToDelete = deletingStudent.id;
+    const nameToDelete = deletingStudent.name;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/v1/admin/students/${deletingStudent.id}`, {
+      const res = await fetch(`/api/v1/admin/students/${idToDelete}`, {
         method: "DELETE",
       });
 
       const data = await res.json();
       if (data.success) {
-        toast.success(`Data murid ${deletingStudent.name} berhasil dihapus.`);
+        toast.success(`Data murid ${nameToDelete} berhasil dihapus.`);
+        // Optimistic UI update
+        setStudents((prev) => prev.filter((s) => s.id !== idToDelete));
         setDeletingStudent(null);
-        loadData();
+        await loadData();
       } else {
         toast.error(data.error?.message || "Gagal menghapus data murid.");
       }
