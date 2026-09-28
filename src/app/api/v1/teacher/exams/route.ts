@@ -34,7 +34,7 @@ export async function GET() {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ startAt: "desc" }, { createdAt: "desc" }],
     });
 
     return NextResponse.json({ success: true, data: exams });
