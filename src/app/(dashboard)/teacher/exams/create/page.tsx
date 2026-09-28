@@ -30,7 +30,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { formatDateTimeLocal, cn } from "@/lib/utils";
+import { formatDateTimeLocal, parseDateInput, cn } from "@/lib/utils";
 import { parseQuestionsFromRawText } from "@/lib/text-parser";
 import { toast } from "sonner";
 
@@ -325,7 +325,7 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
   };
 
   const handleSetEndInDays = (days: number) => {
-    const base = startAt ? new Date(startAt) : new Date();
+    const base = parseDateInput(startAt) || new Date();
     const end = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
     setEndAt(formatDateTimeLocal(end));
     toast.success(`Waktu berakhir disetel ke +${days} hari.`);
@@ -472,9 +472,9 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
     }
 
     if (startAt && endAt) {
-      const sDate = new Date(startAt);
-      const eDate = new Date(endAt);
-      if (eDate <= sDate) {
+      const sDate = parseDateInput(startAt);
+      const eDate = parseDateInput(endAt);
+      if (sDate && eDate && eDate <= sDate) {
         toast.error("Waktu berakhir ujian harus lebih lambat daripada waktu mulai.");
         setCurrentStep(1);
         return;
@@ -862,9 +862,9 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
                   return;
                 }
                 if (startAt && endAt) {
-                  const sDate = new Date(startAt);
-                  const eDate = new Date(endAt);
-                  if (eDate <= sDate) {
+                  const sDate = parseDateInput(startAt);
+                  const eDate = parseDateInput(endAt);
+                  if (sDate && eDate && eDate <= sDate) {
                     toast.error("Waktu berakhir ujian harus lebih lambat daripada waktu mulai.");
                     return;
                   }

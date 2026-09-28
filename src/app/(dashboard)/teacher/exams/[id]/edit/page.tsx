@@ -21,7 +21,7 @@ import {
   HelpCircle,
   CopyPlus,
 } from "lucide-react";
-import { formatDateTimeLocal, cn } from "@/lib/utils";
+import { formatDateTimeLocal, parseDateInput, cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function EditExamPage() {
@@ -129,7 +129,7 @@ export default function EditExamPage() {
   };
 
   const handleSetEndInDays = (days: number) => {
-    const base = startAt ? new Date(startAt) : new Date();
+    const base = parseDateInput(startAt) || new Date();
     const end = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
     setEndAt(formatDateTimeLocal(end));
     toast.success(`Waktu berakhir disetel ke +${days} hari.`);
@@ -143,9 +143,9 @@ export default function EditExamPage() {
     }
 
     if (startAt && endAt) {
-      const sDate = new Date(startAt);
-      const eDate = new Date(endAt);
-      if (eDate <= sDate) {
+      const sDate = parseDateInput(startAt);
+      const eDate = parseDateInput(endAt);
+      if (sDate && eDate && eDate <= sDate) {
         toast.error("Waktu berakhir ujian harus lebih lambat daripada waktu mulai.");
         return;
       }

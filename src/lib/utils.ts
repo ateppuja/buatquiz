@@ -15,11 +15,46 @@ export function formatDate(date: Date | string | null | undefined): string {
   }).format(d);
 }
 
-export function formatDateTimeLocal(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60 * 1000);
-  return local.toISOString().slice(0, 16);
+export function parseDateInput(input: string | Date | null | undefined): Date | null {
+  if (!input) return null;
+  if (input instanceof Date) return isNaN(input.getTime()) ? null : input;
+  const str = String(input).trim();
+  if (!str) return null;
+
+  // If format is YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss without timezone offset, treat as Asia/Jakarta (WIB: +07:00)
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+    const d = new Date(`${str}+07:00`);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export function formatDateTimeLocal(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  const d = typeof date === "string" ? parseDateInput(date) : date;
+  if (!d || isNaN(d.getTime())) return "";
+
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(d);
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    map[p.type] = p.value;
+  }
+
+  let hour = map.hour || "00";
+  if (hour === "24") hour = "00";
+  return `${map.year}-${map.month}-${map.day}T${hour}:${map.minute}`;
 }
 
 export function formatTimeRemaining(seconds: number): string {

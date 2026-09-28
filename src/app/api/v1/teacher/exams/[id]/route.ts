@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { parseDateInput } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -115,8 +116,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (description !== undefined) updateData.description = description;
     if (instructions !== undefined) updateData.instructions = instructions;
     if (durationMinutes) updateData.durationMinutes = parseInt(durationMinutes, 10);
-    if (startAt) updateData.startAt = new Date(startAt);
-    if (endAt) updateData.endAt = new Date(endAt);
+    if (startAt) {
+      const parsedStart = parseDateInput(startAt);
+      if (parsedStart) updateData.startAt = parsedStart;
+    }
+    if (endAt) {
+      const parsedEnd = parseDateInput(endAt);
+      if (parsedEnd) updateData.endAt = parsedEnd;
+    }
     if (maxAttempts) updateData.maxAttempts = parseInt(maxAttempts, 10);
     if (gradingMethod) updateData.gradingMethod = gradingMethod;
     if (resultVisibility) updateData.resultVisibility = resultVisibility;
