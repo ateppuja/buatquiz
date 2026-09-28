@@ -310,6 +310,27 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
     );
   };
 
+  const handleSetStartNow = () => {
+    const now = new Date();
+    setStartAt(formatDateTimeLocal(now));
+    toast.success("Waktu mulai disetel ke saat ini.");
+  };
+
+  const handleSetStartTomorrowMorning = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(8, 0, 0, 0);
+    setStartAt(formatDateTimeLocal(tomorrow));
+    toast.success("Waktu mulai disetel ke besok pukul 08:00 WIB.");
+  };
+
+  const handleSetEndInDays = (days: number) => {
+    const base = startAt ? new Date(startAt) : new Date();
+    const end = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+    setEndAt(formatDateTimeLocal(end));
+    toast.success(`Waktu berakhir disetel ke +${days} hari.`);
+  };
+
   // --- Step 2 Question Helpers ---
   const addQuestion = (type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY") => {
     const newQ: any = {
@@ -448,6 +469,16 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
       toast.error("Pilih minimal satu kelas peserta.");
       setCurrentStep(1);
       return;
+    }
+
+    if (startAt && endAt) {
+      const sDate = new Date(startAt);
+      const eDate = new Date(endAt);
+      if (eDate <= sDate) {
+        toast.error("Waktu berakhir ujian harus lebih lambat daripada waktu mulai.");
+        setCurrentStep(1);
+        return;
+      }
     }
 
     // Question validation
@@ -686,28 +717,82 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Jadwal Waktu Mulai <span className="text-destructive">*</span>
-              </label>
+            {/* Waktu Mulai with Quick Presets */}
+            <div className="space-y-1.5 bg-[#F9FCF5] p-3 rounded-2xl border border-[#D8EEB6]">
+              <div className="flex items-center justify-between">
+                <label className="block font-black uppercase tracking-wider text-[#4B7914] text-xs">
+                  Waktu Mulai Ujian (WIB) <span className="text-destructive">*</span>
+                </label>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleSetStartNow}
+                    className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-[#EBF7D9] text-[#4B7914] border border-[#D5EFA9] hover:bg-[#7AB82A] hover:text-white transition-colors cursor-pointer"
+                    title="Atur waktu mulai ke saat ini agar siswa bisa langsung mengerjakan"
+                  >
+                    ⚡ Mulai Sekarang
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSetStartTomorrowMorning}
+                    className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    📅 Besok 08:00
+                  </button>
+                </div>
+              </div>
+
               <Input
                 type="datetime-local"
                 value={startAt}
                 onChange={(e) => setStartAt(e.target.value)}
-                className="h-11"
+                className="h-10 text-xs rounded-xl border-2 border-[#D5EFA9] bg-white focus-visible:ring-[#7AB82A] font-bold font-mono"
               />
+              <p className="text-[10px] text-slate-500 font-semibold">
+                Siswa baru dapat membuka soal setelah waktu mulai ini tercapai.
+              </p>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Jadwal Waktu Berakhir <span className="text-destructive">*</span>
-              </label>
+            {/* Waktu Berakhir with Quick Presets */}
+            <div className="space-y-1.5 bg-[#F9FCF5] p-3 rounded-2xl border border-[#D8EEB6]">
+              <div className="flex items-center justify-between">
+                <label className="block font-black uppercase tracking-wider text-[#4B7914] text-xs">
+                  Waktu Berakhir Ujian (WIB) <span className="text-destructive">*</span>
+                </label>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSetEndInDays(1)}
+                    className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-[#EBF7D9] text-[#4B7914] border border-[#D5EFA9] hover:bg-[#7AB82A] hover:text-white transition-colors cursor-pointer"
+                  >
+                    +1 Hari
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetEndInDays(7)}
+                    className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-[#EBF7D9] text-[#4B7914] border border-[#D5EFA9] hover:bg-[#7AB82A] hover:text-white transition-colors cursor-pointer"
+                  >
+                    +7 Hari
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetEndInDays(30)}
+                    className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    +1 Bulan
+                  </button>
+                </div>
+              </div>
+
               <Input
                 type="datetime-local"
                 value={endAt}
                 onChange={(e) => setEndAt(e.target.value)}
-                className="h-11"
+                className="h-10 text-xs rounded-xl border-2 border-[#D5EFA9] bg-white focus-visible:ring-[#7AB82A] font-bold font-mono"
               />
+              <p className="text-[10px] text-slate-500 font-semibold">
+                Setelah waktu berakhir, ujian otomatis tertutup dan tidak bisa diakses lagi.
+              </p>
             </div>
 
             {/* Class Multi-select */}
@@ -762,7 +847,32 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
           </div>
 
           <div className="flex justify-end pt-4 border-t border-border">
-            <Button onClick={() => setCurrentStep(2)} className="font-bold gap-2">
+            <Button
+              onClick={() => {
+                if (!title.trim()) {
+                  toast.error("Judul ujian wajib diisi.");
+                  return;
+                }
+                if (!subjectId) {
+                  toast.error("Mata pelajaran wajib dipilih.");
+                  return;
+                }
+                if (selectedClassIds.length === 0) {
+                  toast.error("Pilih minimal satu kelas peserta.");
+                  return;
+                }
+                if (startAt && endAt) {
+                  const sDate = new Date(startAt);
+                  const eDate = new Date(endAt);
+                  if (eDate <= sDate) {
+                    toast.error("Waktu berakhir ujian harus lebih lambat daripada waktu mulai.");
+                    return;
+                  }
+                }
+                setCurrentStep(2);
+              }}
+              className="font-bold gap-2"
+            >
               <span>Lanjut ke Tahap 2 (Soal)</span>
               <ArrowRight className="h-4 w-4" />
             </Button>

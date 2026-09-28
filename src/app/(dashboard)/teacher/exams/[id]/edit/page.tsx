@@ -114,11 +114,41 @@ export default function EditExamPage() {
     });
   };
 
+  const handleSetStartNow = () => {
+    const now = new Date();
+    setStartAt(formatDateTimeLocal(now));
+    toast.success("Waktu mulai disetel ke saat ini.");
+  };
+
+  const handleSetStartTomorrowMorning = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(8, 0, 0, 0);
+    setStartAt(formatDateTimeLocal(tomorrow));
+    toast.success("Waktu mulai disetel ke besok pukul 08:00 WIB.");
+  };
+
+  const handleSetEndInDays = (days: number) => {
+    const base = startAt ? new Date(startAt) : new Date();
+    const end = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+    setEndAt(formatDateTimeLocal(end));
+    toast.success(`Waktu berakhir disetel ke +${days} hari.`);
+  };
+
   const handleUpdateExam = async (publish: boolean = false) => {
     // Basic validation
     if (!title.trim()) {
       toast.error("Judul ujian wajib diisi.");
       return;
+    }
+
+    if (startAt && endAt) {
+      const sDate = new Date(startAt);
+      const eDate = new Date(endAt);
+      if (eDate <= sDate) {
+        toast.error("Waktu berakhir ujian harus lebih lambat daripada waktu mulai.");
+        return;
+      }
     }
 
     for (let i = 0; i < questions.length; i++) {
@@ -344,23 +374,33 @@ export default function EditExamPage() {
       </div>
 
       {/* Basic Info Card */}
-      <Card className="p-5 shadow-sm border-border space-y-4">
-        <h3 className="text-sm font-bold text-foreground">Informasi Pelaksanaan Ujian</h3>
+      <Card className="p-6 shadow-md border-2 border-[#D8EEB6] rounded-[28px] bg-white space-y-4">
+        <div className="flex items-center gap-2 border-b border-[#E0F2C2] pb-3">
+          <Clock className="h-5 w-5 text-[#7AB82A]" />
+          <div>
+            <h3 className="text-sm font-black text-slate-900">Informasi & Jadwal Pelaksanaan Ujian</h3>
+            <p className="text-[11px] font-semibold text-slate-500">
+              Atur judul, durasi waktu, serta jadwal mulai dan berakhir sesuai keinginan Anda
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div className="sm:col-span-2">
-            <label className="block font-semibold text-muted-foreground mb-1">
-              Judul Ujian <span className="text-destructive">*</span>
+            <label className="block font-black uppercase tracking-wider text-[#4B7914] mb-1.5">
+              Judul Ujian <span className="text-rose-500">*</span>
             </label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="h-10 text-sm font-medium"
-              placeholder="Judul ujian..."
+              className="h-11 text-xs rounded-xl border-2 border-[#D5EFA9] focus-visible:ring-[#7AB82A] font-bold"
+              placeholder="Contoh: Ujian Tengah Semester Fiqih Kelas 4"
             />
           </div>
+
           <div>
-            <label className="block font-semibold text-muted-foreground mb-1">
-              Durasi (Menit) <span className="text-destructive">*</span>
+            <label className="block font-black uppercase tracking-wider text-[#4B7914] mb-1.5">
+              Durasi Pengerjaan Siswa (Menit) <span className="text-rose-500">*</span>
             </label>
             <Input
               type="number"
@@ -368,37 +408,100 @@ export default function EditExamPage() {
               max={300}
               value={durationMinutes}
               onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10) || 60)}
-              className="h-10"
+              className="h-11 text-xs rounded-xl border-2 border-[#D5EFA9] focus-visible:ring-[#7AB82A] font-bold"
             />
           </div>
+
           <div>
-            <label className="block font-semibold text-muted-foreground mb-1">Maks. Percobaan</label>
+            <label className="block font-black uppercase tracking-wider text-[#4B7914] mb-1.5">
+              Maksimal Percobaan Siswa
+            </label>
             <Input
               type="number"
               min={1}
               max={10}
               value={maxAttempts}
               onChange={(e) => setMaxAttempts(parseInt(e.target.value, 10) || 1)}
-              className="h-10"
+              className="h-11 text-xs rounded-xl border-2 border-[#D5EFA9] focus-visible:ring-[#7AB82A] font-bold"
             />
           </div>
-          <div>
-            <label className="block font-semibold text-muted-foreground mb-1">Waktu Mulai</label>
+
+          {/* Waktu Mulai with Quick Presets */}
+          <div className="space-y-1.5 bg-[#F9FCF5] p-3 rounded-2xl border border-[#D8EEB6]">
+            <div className="flex items-center justify-between">
+              <label className="block font-black uppercase tracking-wider text-[#4B7914]">
+                Waktu Mulai Ujian (WIB) <span className="text-rose-500">*</span>
+              </label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleSetStartNow}
+                  className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-[#EBF7D9] text-[#4B7914] border border-[#D5EFA9] hover:bg-[#7AB82A] hover:text-white transition-colors cursor-pointer"
+                  title="Atur waktu mulai ke saat ini agar siswa bisa langsung mengerjakan"
+                >
+                  ⚡ Mulai Sekarang
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSetStartTomorrowMorning}
+                  className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  📅 Besok 08:00
+                </button>
+              </div>
+            </div>
+
             <Input
               type="datetime-local"
               value={startAt}
               onChange={(e) => setStartAt(e.target.value)}
-              className="h-10"
+              className="h-10 text-xs rounded-xl border-2 border-[#D5EFA9] bg-white focus-visible:ring-[#7AB82A] font-bold font-mono"
             />
+            <p className="text-[10px] text-slate-500 font-semibold">
+              Siswa baru dapat membuka soal setelah waktu mulai ini tercapai.
+            </p>
           </div>
-          <div>
-            <label className="block font-semibold text-muted-foreground mb-1">Waktu Berakhir</label>
+
+          {/* Waktu Berakhir with Quick Presets */}
+          <div className="space-y-1.5 bg-[#F9FCF5] p-3 rounded-2xl border border-[#D8EEB6]">
+            <div className="flex items-center justify-between">
+              <label className="block font-black uppercase tracking-wider text-[#4B7914]">
+                Waktu Berakhir Ujian (WIB) <span className="text-rose-500">*</span>
+              </label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleSetEndInDays(1)}
+                  className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-[#EBF7D9] text-[#4B7914] border border-[#D5EFA9] hover:bg-[#7AB82A] hover:text-white transition-colors cursor-pointer"
+                >
+                  +1 Hari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetEndInDays(7)}
+                  className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-[#EBF7D9] text-[#4B7914] border border-[#D5EFA9] hover:bg-[#7AB82A] hover:text-white transition-colors cursor-pointer"
+                >
+                  +7 Hari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetEndInDays(30)}
+                  className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  +1 Bulan
+                </button>
+              </div>
+            </div>
+
             <Input
               type="datetime-local"
               value={endAt}
               onChange={(e) => setEndAt(e.target.value)}
-              className="h-10"
+              className="h-10 text-xs rounded-xl border-2 border-[#D5EFA9] bg-white focus-visible:ring-[#7AB82A] font-bold font-mono"
             />
+            <p className="text-[10px] text-slate-500 font-semibold">
+              Setelah waktu berakhir, ujian otomatis tertutup dan tidak bisa diakses lagi.
+            </p>
           </div>
         </div>
       </Card>
