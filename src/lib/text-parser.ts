@@ -106,7 +106,7 @@ function parseSingleBlock(block: string, itemNumber: number): ParsedTextQuestion
   let explicitType: string | null = null;
   let rawKey = "";
   let explanation = "";
-  let points = 5;
+  let points = 1;
 
   const rawOptions: { key: string; text: string; isMarkedCorrect?: boolean }[] = [];
 
@@ -124,7 +124,7 @@ function parseSingleBlock(block: string, itemNumber: number): ParsedTextQuestion
     // Check for Points / Bobot: "Bobot: 10" or "Poin: 20" or "[10 poin]"
     const pointMatch = line.match(/^(?:Bobot|Poin|Score|Points?)\s*[:=]\s*(\d+(?:\.\d+)?)/i);
     if (pointMatch) {
-      points = parseFloat(pointMatch[1]) || 5;
+      points = parseFloat(pointMatch[1]) || 1;
       continue;
     }
 
@@ -197,7 +197,6 @@ function parseSingleBlock(block: string, itemNumber: number): ParsedTextQuestion
   } else if (rawOptions.length === 0) {
     // No options provided -> Essay
     type = "ESSAY";
-    if (points === 5) points = 15; // default reasonable essay point
   } else if (
     rawOptions.length === 2 &&
     rawOptions.some((o) => /benar|true/i.test(o.text)) &&

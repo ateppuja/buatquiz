@@ -141,6 +141,57 @@ async function runTests() {
   const scoreAverage = calculateMultiAttemptFinalScore(attemptsHistory, "AVERAGE");
   assert(scoreAverage.finalScore === 80, "Metode AVERAGE menghitung rata-rata (70+90+80)/3 = 80.00");
 
+  // Default 1 Point per question & 0-100 Fair Proportional Scoring Tests
+  // Scenario A: 10 questions each 1 point, 10 correct -> Score = 100
+  const questions10 = Array.from({ length: 10 }, (_, i) => ({
+    id: `q-${i + 1}`,
+    type: "MULTIPLE_CHOICE",
+    points: 1,
+    options: [{ id: `opt-${i + 1}-A`, isCorrect: true }, { id: `opt-${i + 1}-B`, isCorrect: false }],
+  }));
+  const answers10AllCorrect = Array.from({ length: 10 }, (_, i) => ({
+    questionId: `q-${i + 1}`,
+    selectedOptionId: `opt-${i + 1}-A`,
+  }));
+  const score10All = calculateAttemptScore(questions10, answers10AllCorrect);
+  assert(score10All.earnedPoints === 10 && score10All.maxPoints === 10, "10 soal @ 1 poin: Total poin diperoleh 10/10");
+  assert(score10All.finalScore === 100, "10 soal @ 1 poin, benar semua bernilai 100");
+
+  // Scenario B: 6 questions each 1 point, 5 correct -> Score = (5/6)*100 = 83.33
+  const questions6 = Array.from({ length: 6 }, (_, i) => ({
+    id: `q6-${i + 1}`,
+    type: "MULTIPLE_CHOICE",
+    points: 1,
+    options: [{ id: `opt6-${i + 1}-A`, isCorrect: true }, { id: `opt6-${i + 1}-B`, isCorrect: false }],
+  }));
+  const answers6FiveCorrect = [
+    { questionId: "q6-1", selectedOptionId: "opt6-1-A" },
+    { questionId: "q6-2", selectedOptionId: "opt6-2-A" },
+    { questionId: "q6-3", selectedOptionId: "opt6-3-A" },
+    { questionId: "q6-4", selectedOptionId: "opt6-4-A" },
+    { questionId: "q6-5", selectedOptionId: "opt6-5-A" },
+    { questionId: "q6-6", selectedOptionId: "opt6-6-B" }, // wrong
+  ];
+  const score6Five = calculateAttemptScore(questions6, answers6FiveCorrect);
+  assert(score6Five.earnedPoints === 5 && score6Five.maxPoints === 6, "6 soal @ 1 poin: 5 benar dari 6 soal");
+  assert(score6Five.finalScore === 83.33, "6 soal @ 1 poin, 5 benar dinilai adil 83.33");
+
+  // Scenario C: 4 questions each 1 point, 3 correct -> Score = (3/4)*100 = 75
+  const questions4 = Array.from({ length: 4 }, (_, i) => ({
+    id: `q4-${i + 1}`,
+    type: "MULTIPLE_CHOICE",
+    points: 1,
+    options: [{ id: `opt4-${i + 1}-A`, isCorrect: true }, { id: `opt4-${i + 1}-B`, isCorrect: false }],
+  }));
+  const answers4ThreeCorrect = [
+    { questionId: "q4-1", selectedOptionId: "opt4-1-A" },
+    { questionId: "q4-2", selectedOptionId: "opt4-2-A" },
+    { questionId: "q4-3", selectedOptionId: "opt4-3-A" },
+    { questionId: "q4-4", selectedOptionId: "opt4-4-B" }, // wrong
+  ];
+  const score4Three = calculateAttemptScore(questions4, answers4ThreeCorrect);
+  assert(score4Three.finalScore === 75, "4 soal @ 1 poin, 3 benar dinilai adil 75.00");
+
   // ----------------------------------------------------
   // TEST 5: Excel Report Exporter (FR-023)
   // ----------------------------------------------------
@@ -288,6 +339,23 @@ Pembahasan: Fotosintesis adalah proses pembentukan energi kimia oleh tumbuhan.`;
   assert(parsedTextResult.questions[1].type === "TRUE_FALSE", "Soal 2 otomatis dikenali sebagai Benar/Salah");
   assert(parsedTextResult.questions[2].type === "ESSAY", "Soal 3 otomatis dikenali sebagai Esai");
   assert(parsedTextResult.questions[2].points === 20, "Bobot 20 pada soal 3 terbaca akurat");
+
+  // Sub-test: Text without explicit bobot should default to 1 point each
+  const rawTextNoBobot = `1. Hasil 5 x 5 adalah?
+A. 20
+B. 25
+Kunci: B
+
+2. Indonesia merdeka tahun 1945.
+A. Benar
+B. Salah
+Kunci: A
+
+3. Jelaskan apa itu gravitasi!`;
+  const resultNoBobot = parseQuestionsFromRawText(rawTextNoBobot);
+  assert(resultNoBobot.questions[0].points === 1, "Soal PG tanpa bobot default 1 poin");
+  assert(resultNoBobot.questions[1].points === 1, "Soal BS tanpa bobot default 1 poin");
+  assert(resultNoBobot.questions[2].points === 1, "Soal Esai tanpa bobot default 1 poin");
 
   // ----------------------------------------------------
   // TEST 10: Teacher CRUD Management (FR-002)

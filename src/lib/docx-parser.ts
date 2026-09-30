@@ -67,7 +67,7 @@ export async function parseDocxBuffer(buffer: Buffer): Promise<DocxParseResult> 
 
       let typeStr = "";
       let questionText = "";
-      let points = 5;
+      let points = 1;
       let explanation = "";
       let rawKey = "";
       const rawOptions: { [key: string]: string } = {};

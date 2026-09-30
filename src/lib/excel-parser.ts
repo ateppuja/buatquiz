@@ -65,8 +65,8 @@ export function parseQuestionsExcelBuffer(buffer: Buffer): ExcelQuestionParseRes
 
       const typeStr = (normalizedRow["tipe_soal"] || normalizedRow["tipe"] || "").toUpperCase();
       const questionText = normalizedRow["pertanyaan"] || normalizedRow["soal"] || "";
-      const rawPoints = parseFloat(normalizedRow["bobot"] || normalizedRow["poin"] || "5");
-      const points = !isNaN(rawPoints) && rawPoints > 0 ? rawPoints : 5;
+      const rawPoints = parseFloat(normalizedRow["bobot"] || normalizedRow["poin"] || "1");
+      const points = !isNaN(rawPoints) && rawPoints > 0 ? rawPoints : 1;
       const explanation = normalizedRow["pembahasan"] || "";
       const rawKey = (normalizedRow["kunci_jawaban"] || normalizedRow["kunci"] || "").toUpperCase();
 

@@ -36,7 +36,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         type,
         questionText,
         questionImage: questionImage || null,
-        points: parseFloat(points || "5"),
+        points: parseFloat(points || "1"),
         explanation: explanation || null,
         orderIndex: nextOrder,
       },

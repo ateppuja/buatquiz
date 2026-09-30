@@ -58,7 +58,7 @@ export default function CreateExamWizardPage() {
       id: "temp-1",
       type: "MULTIPLE_CHOICE",
       questionText: "",
-      points: 5,
+      points: 1,
       explanation: "",
       options: [
         { key: "A", text: "", isCorrect: false },
@@ -246,7 +246,7 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
         id: `text-q-${Date.now()}-${idx}`,
         type: q.type,
         questionText: q.questionText,
-        points: q.points || 5,
+        points: q.points || 1,
         explanation: q.explanation || "",
         options: q.options || [],
       }));
@@ -337,7 +337,7 @@ Pembahasan: Fotosintesis adalah proses tumbuhan hijau mengubah energi cahaya men
       id: `temp-${Date.now()}`,
       type,
       questionText: "",
-      points: type === "ESSAY" ? 15 : 5,
+      points: 1,
       explanation: "",
       options:
         type === "MULTIPLE_CHOICE"

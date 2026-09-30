@@ -200,7 +200,7 @@ export default function EditExamPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               questionText: q.questionText,
-              points: parseFloat(q.points) || 5,
+              points: parseFloat(q.points) || 1,
               options: q.options?.map((o: any, oIdx: number) => ({
                 key: o.key || o.optionKey || String.fromCharCode(65 + oIdx),
                 text: o.text || o.optionText || "",
@@ -258,7 +258,7 @@ export default function EditExamPage() {
         body: JSON.stringify({
           type,
           questionText: "Tuliskan pertanyaan baru di sini...",
-          points: type === "ESSAY" ? 15 : 5,
+          points: 1,
           options: defaultOptions,
         }),
       });
