@@ -88,19 +88,28 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         maxPoints: att.maxPoints,
         finalScore: att.finalScore,
         gradingStatus: att.gradingStatus,
-        answers: att.answers.map((a) => ({
-          id: a.id,
-          questionId: a.questionId,
-          questionType: a.question.type,
-          questionText: a.question.questionText,
-          points: a.question.points,
-          selectedOptionId: a.selectedOptionId,
-          selectedOptionKey: a.selectedOption?.optionKey || null,
-          selectedOptionText: a.selectedOption?.optionText || null,
-          answerText: a.answerText,
-          awardedPoints: a.awardedPoints,
-          feedback: a.feedback,
-        })),
+        answers: att.answers.map((a) => {
+          const isMcqOrTf = a.question.type === "MULTIPLE_CHOICE" || a.question.type === "TRUE_FALSE";
+          const isCorrect = isMcqOrTf
+            ? (a.selectedOptionId ? Boolean(a.selectedOption?.isCorrect) : false)
+            : (a.awardedPoints !== null && a.awardedPoints !== undefined ? a.awardedPoints > 0 : null);
+
+          return {
+            id: a.id,
+            questionId: a.questionId,
+            questionType: a.question.type,
+            questionText: a.question.questionText,
+            points: a.question.points,
+            selectedOptionId: a.selectedOptionId,
+            selectedOptionKey: a.selectedOption?.optionKey || null,
+            selectedOptionText: a.selectedOption?.optionText || null,
+            isCorrect,
+            isCorrectOption: a.selectedOption?.isCorrect ?? null,
+            answerText: a.answerText,
+            awardedPoints: a.awardedPoints,
+            feedback: a.feedback,
+          };
+        }),
       });
     }
 
@@ -108,11 +117,20 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     // Compute aggregate statistics
     const scores = participants.map((p) => p.finalScore).filter((s) => s !== null && s !== undefined) as number[];
+    const allDurations = attempts
+      .filter((a) => a.startedAt && a.submittedAt)
+      .map((a) => (new Date(a.submittedAt!).getTime() - new Date(a.startedAt).getTime()) / (1000 * 60));
+
+    const avgDuration = allDurations.length > 0
+      ? Math.round((allDurations.reduce((a, b) => a + b, 0) / allDurations.length) * 10) / 10
+      : 0;
+
     const stats = {
       totalParticipants: participants.length,
       averageScore: scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100 : 0,
       highestScore: scores.length > 0 ? Math.max(...scores) : 0,
       lowestScore: scores.length > 0 ? Math.min(...scores) : 0,
+      averageDurationMinutes: avgDuration,
       pendingGradingCount: participants.filter((p) => p.gradingStatus === "PENDING").length,
     };
 
