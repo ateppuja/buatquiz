@@ -3,7 +3,7 @@ import { parseDocxBuffer } from "../src/lib/docx-parser";
 import { parseQuestionsExcelBuffer, parseStudentsExcelBuffer } from "../src/lib/excel-parser";
 import { calculateAttemptScore, calculateMultiAttemptFinalScore } from "../src/lib/scoring";
 import { generateExamReportExcelBuffer } from "../src/lib/excel-exporter";
-import { parseQuestionsFromRawText } from "../src/lib/text-parser";
+import { parseQuestionsFromRawText, beautifyQuestionText } from "../src/lib/text-parser";
 import { Document, Packer, Paragraph, HeadingLevel } from "docx";
 import * as XLSX from "xlsx";
 import { prisma } from "../src/lib/prisma";
@@ -356,6 +356,77 @@ Kunci: A
   assert(resultNoBobot.questions[0].points === 1, "Soal PG tanpa bobot default 1 poin");
   assert(resultNoBobot.questions[1].points === 1, "Soal BS tanpa bobot default 1 poin");
   assert(resultNoBobot.questions[2].points === 1, "Soal Esai tanpa bobot default 1 poin");
+
+  // Sub-test 9.2: Horizontal / Inline options (A. ...  B. ...  C. ...  D. ...)
+  const rawHorizontalText = `1. Berapakah hasil dari 10 + 20?
+A. 15   B. 25   C. 30   D. 35
+Kunci: C
+
+2. Ibukota Jawa Barat adalah...
+A. Bandung   B. Semarang
+C. Surabaya   D. Medan
+Jawaban: A`;
+  const resultHorizontal = parseQuestionsFromRawText(rawHorizontalText);
+  assert(resultHorizontal.success === true && resultHorizontal.validCount === 2, "Parser berhasil membaca format opsi horizontal/inline");
+  assert(resultHorizontal.questions[0].options.length === 4, "Soal 1 horizontal berhasil dipecah menjadi 4 opsi terpisah (A, B, C, D)");
+  assert(resultHorizontal.questions[0].options.find((o) => o.key === "C")?.isCorrect === true, "Kunci C pada soal horizontal 1 akurat");
+  assert(resultHorizontal.questions[1].options.length === 4, "Soal 2 horizontal 2 baris x 2 kolom berhasil dipecah 4 opsi");
+
+  // Sub-test 9.3: Asterisk & Suffix Key Markers (*B or (kunci))
+  const rawAsteriskText = `1. Presiden pertama RI:
+A. Soeharto
+*B. Ir. Soekarno
+C. BJ Habibie
+D. Gus Dur
+
+2. Candi Borobudur terletak di:
+A. Jawa Tengah (kunci)
+B. Jawa Barat
+C. Jawa Timur
+D. Bali`;
+  const resultAsterisk = parseQuestionsFromRawText(rawAsteriskText);
+  assert(resultAsterisk.questions[0].options.find((o) => o.key === "B")?.isCorrect === true, "Kunci bertanda bintang (*B) otomatis terbaca benar");
+  assert(resultAsterisk.questions[1].options.find((o) => o.key === "A")?.isCorrect === true, "Kunci bertanda teks suffix (kunci) otomatis terbaca benar");
+
+  // Sub-test 9.4: Global Answer Key Table at bottom
+  const rawGlobalKeyText = `1. Warna primer pertama
+A. Merah
+B. Hijau
+C. Ungu
+
+2. Warna primer kedua
+A. Oranye
+B. Kuning
+C. Cokelat
+
+KUNCI JAWABAN:
+1. A
+2. B`;
+  const resultGlobalKey = parseQuestionsFromRawText(rawGlobalKeyText);
+  assert(resultGlobalKey.questions.length === 2, "Tabel kunci jawaban di bawah terpisah dari butir soal utama");
+  assert(resultGlobalKey.questions[0].options.find((o) => o.key === "A")?.isCorrect === true, "Kunci global soal 1 (A) otomatis terpasang");
+  assert(resultGlobalKey.questions[1].options.find((o) => o.key === "B")?.isCorrect === true, "Kunci global soal 2 (B) otomatis terpasang");
+
+  // Sub-test 9.5: Document Header & Preamble cleaning
+  const rawHeaderDocText = `DINAS PENDIDIKAN DAN KEBUDAYAAN
+ULANGAN AKHIR SEMESTER GENAP
+Mata Pelajaran : IPA
+Kelas : IX
+Waktu : 60 Menit
+------------------------------------------------
+1. Organ ekskresi manusia adalah ginjal.
+A. Benar
+B. Salah
+Kunci: Benar`;
+  const resultHeader = parseQuestionsFromRawText(rawHeaderDocText);
+  assert(resultHeader.validCount === 1, "Header dokumen ujian berhasil dibersihkan otomatis");
+  assert(resultHeader.questions[0].questionText === "Organ ekskresi manusia adalah ginjal.", "Teks pertanyaan soal 1 bersih tanpa tercampur header kop");
+
+  // Sub-test 9.6: Auto-beautification (beautifyQuestionText)
+  const messyText = `1. Apa ibukota RI? A. Bandung B. Jakarta C. Medan Kunci: B`;
+  const beautified = beautifyQuestionText(messyText);
+  assert(beautified.includes("1. Apa ibukota RI?"), "Beautify merapikan teks nomor soal");
+  assert(beautified.includes("B. Jakarta"), "Beautify menyusun baris opsi rapi");
 
   // ----------------------------------------------------
   // TEST 10: Teacher CRUD Management (FR-002)

@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   Plus,
   Trash2,
@@ -22,8 +23,10 @@ import {
   HelpCircle,
   CopyPlus,
   Printer,
+  FileText,
 } from "lucide-react";
 import { formatDateTimeLocal, parseDateInput, cn } from "@/lib/utils";
+import { parseQuestionsFromRawText, beautifyQuestionText } from "@/lib/text-parser";
 import { toast } from "sonner";
 
 export default function EditExamPage() {
@@ -44,6 +47,234 @@ export default function EditExamPage() {
   const [gradingMethod, setGradingMethod] = useState("HIGHEST");
   const [resultVisibility, setResultVisibility] = useState("MANUAL");
   const [questions, setQuestions] = useState<any[]>([]);
+
+  // Smart Text Import Modal states
+  const [showTextImportModal, setShowTextImportModal] = useState(false);
+  const [rawQuestionText, setRawQuestionText] = useState("");
+  const [parsedTextResult, setParsedTextResult] = useState<any>(null);
+  const [textImportMode, setTextImportMode] = useState<"APPEND" | "REPLACE">("APPEND");
+  const [isApplyingText, setIsApplyingText] = useState(false);
+
+  const samplePresets: Record<string, { label: string; text: string }> = {
+    MIXED: {
+      label: "🌟 Soal Campuran (PG, BS, Esai)",
+      text: `1. Siapakah Presiden pertama Republik Indonesia?
+A. Soeharto
+B. Ir. Soekarno
+C. B.J. Habibie
+D. Abdurrahman Wahid
+Kunci: B
+Pembahasan: Ir. Soekarno adalah Presiden pertama RI yang memproklamasikan kemerdekaan.
+
+2. Candi Borobudur merupakan candi Buddha terbesar yang terletak di Jawa Tengah.
+A. Benar
+B. Salah
+Kunci: Benar
+
+3. Sebutkan dan jelaskan 3 fungsi daun bagi kelangsungan hidup tumbuhan!
+Bobot: 2
+Pembahasan: 1. Tempat fotosintesis, 2. Tempat respirasi/pernapasan, 3. Tempat transpirasi/penguapan air.`,
+    },
+    PG: {
+      label: "📋 Pilihan Ganda (PG)",
+      text: `1. Berapakah hasil dari 25 + 15?
+A. 30
+B. 35
+C. 40
+D. 45
+Kunci: C
+Pembahasan: 25 + 15 = 40.
+
+2. Ibukota negara Republik Indonesia adalah...
+A. Bandung
+B. Jakarta
+C. Surabaya
+D. Semarang
+Kunci: B
+
+3. Lambang sila ketiga Pancasila adalah:
+A. Bintang
+B. Rantai
+C. Pohon Beringin
+D. Padi dan Kapas
+Kunci: C`,
+    },
+    BS: {
+      label: "✅ Benar / Salah (BS)",
+      text: `1. Bumi bergerak mengelilingi matahari dalam tata surya kita.
+A. Benar
+B. Salah
+Kunci: Benar
+Pembahasan: Pergerakan bumi mengelilingi matahari disebut revolusi bumi.
+
+2. Besi akan menyusut ukurannya saat dipanaskan.
+A. Benar
+B. Salah
+Kunci: Salah
+Pembahasan: Benda padat seperti besi akan memuai saat terkena panas.`,
+    },
+    ESSAY: {
+      label: "✍️ Esai / Uraian",
+      text: `1. Jelaskan perbedaan antara perpindahan kalor secara konduksi, konveksi, dan radiasi!
+Bobot: 2
+Pembahasan: Konduksi tanpa zat perantara, konveksi disertai zat perantara, radiasi tanpa zat perantara.
+
+2. Mengapa kita harus menjaga kelestarian lingkungan dan hutan?
+Bobot: 2
+Pembahasan: Untuk menjaga keseimbangan ekosistem, mencegah bencana banjir/longsor, dan menjamin ketersediaan air bersih.`,
+    },
+    WA: {
+      label: "⚡ Format Cepat / WhatsApp",
+      text: `1. Alat indera penglihatan manusia adalah...
+A. Hidung   B. Mata   C. Telinga   D. Lidah
+Kunci: B
+
+2. Hewan yang berkembang biak dengan bertelur disebut ovipar.
+Benar / Salah
+Kunci: Benar
+
+3. Berapakah hasil dari 8 x 7?
+A. 54   B. 56   C. 58   D. 62
+Jawaban: B`,
+    },
+  };
+
+  const handleApplyPreset = (presetKey: string) => {
+    const preset = samplePresets[presetKey];
+    if (preset) {
+      setRawQuestionText(preset.text);
+      const res = parseQuestionsFromRawText(preset.text);
+      setParsedTextResult(res);
+      toast.success(`Format "${preset.label}" dimasukkan.`);
+    }
+  };
+
+  const handleBeautifyText = () => {
+    if (!rawQuestionText.trim()) {
+      toast.error("Teks soal masih kosong.");
+      return;
+    }
+    const beautified = beautifyQuestionText(rawQuestionText);
+    setRawQuestionText(beautified);
+    const res = parseQuestionsFromRawText(beautified);
+    setParsedTextResult(res);
+    toast.success("Format teks berhasil dirapikan otomatis!");
+  };
+
+  const handleTogglePreviewOptionKey = (qIdx: number, optKey: string) => {
+    if (!parsedTextResult?.questions) return;
+    const nextQuestions = [...parsedTextResult.questions];
+    const q = nextQuestions[qIdx];
+    if (q && q.options) {
+      q.options = q.options.map((opt: any) => ({
+        ...opt,
+        isCorrect: opt.key.toUpperCase() === optKey.toUpperCase(),
+      }));
+      setParsedTextResult({
+        ...parsedTextResult,
+        questions: nextQuestions,
+      });
+    }
+  };
+
+  const handleUpdatePreviewQuestionType = (qIdx: number, newType: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY") => {
+    if (!parsedTextResult?.questions) return;
+    const nextQuestions = [...parsedTextResult.questions];
+    const q = nextQuestions[qIdx];
+    if (q) {
+      q.type = newType;
+      if (newType === "TRUE_FALSE") {
+        q.options = [
+          { key: "BENAR", text: "Benar", isCorrect: true },
+          { key: "SALAH", text: "Salah", isCorrect: false },
+        ];
+      } else if (newType === "MULTIPLE_CHOICE" && (!q.options || q.options.length < 2)) {
+        q.options = [
+          { key: "A", text: "Pilihan A", isCorrect: true },
+          { key: "B", text: "Pilihan B", isCorrect: false },
+          { key: "C", text: "Pilihan C", isCorrect: false },
+          { key: "D", text: "Pilihan D", isCorrect: false },
+        ];
+      } else if (newType === "ESSAY") {
+        q.options = [];
+      }
+      setParsedTextResult({
+        ...parsedTextResult,
+        questions: nextQuestions,
+      });
+    }
+  };
+
+  const handleUpdatePreviewQuestionPoints = (qIdx: number, newPoints: number) => {
+    if (!parsedTextResult?.questions) return;
+    const nextQuestions = [...parsedTextResult.questions];
+    if (nextQuestions[qIdx]) {
+      nextQuestions[qIdx].points = Math.max(0.5, newPoints || 1);
+      setParsedTextResult({
+        ...parsedTextResult,
+        questions: nextQuestions,
+      });
+    }
+  };
+
+  const handleDeletePreviewQuestion = (qIdx: number) => {
+    if (!parsedTextResult?.questions) return;
+    const nextQuestions = parsedTextResult.questions.filter((_: any, idx: number) => idx !== qIdx);
+    setParsedTextResult({
+      ...parsedTextResult,
+      questions: nextQuestions,
+      validCount: nextQuestions.length,
+      totalParsed: nextQuestions.length,
+    });
+    toast.info("Butir soal dihapus dari pratinjau.");
+  };
+
+  const handleApplyTextQuestions = async () => {
+    if (!parsedTextResult || parsedTextResult.validCount === 0) {
+      toast.error("Tidak ada butir soal valid yang dapat dimasukkan.");
+      return;
+    }
+
+    const validQuestions = parsedTextResult.questions.filter((q: any) => q.isValid);
+    setIsApplyingText(true);
+    try {
+      if (textImportMode === "REPLACE") {
+        // Delete existing questions
+        for (const oldQ of questions) {
+          if (oldQ.id) {
+            await fetch(`/api/v1/teacher/exams/${examId}/questions/${oldQ.id}`, {
+              method: "DELETE",
+            }).catch(() => {});
+          }
+        }
+      }
+
+      // Add all valid questions
+      for (const q of validQuestions) {
+        await fetch(`/api/v1/teacher/exams/${examId}/questions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: q.type,
+            questionText: q.questionText,
+            points: q.points || 1,
+            explanation: q.explanation || undefined,
+            options: q.options || [],
+          }),
+        });
+      }
+
+      toast.success(`Berhasil menambahkan ${validQuestions.length} butir soal ke dalam ujian!`);
+      setShowTextImportModal(false);
+      setRawQuestionText("");
+      setParsedTextResult(null);
+      await loadExamDetail();
+    } catch {
+      toast.error("Terjadi kesalahan saat menyimpan soal dari teks.");
+    } finally {
+      setIsApplyingText(false);
+    }
+  };
 
   const loadExamDetail = async () => {
     try {
@@ -529,7 +760,15 @@ export default function EditExamPage() {
               Edit kalimat pertanyaan, opsi jawaban, kunci jawaban, dan bobot poin langsung di bawah ini.
             </p>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button
+              size="sm"
+              onClick={() => setShowTextImportModal(true)}
+              className="text-xs font-bold gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xs"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Tempel Teks Soal</span>
+            </Button>
             <Button size="sm" variant="outline" onClick={() => handleAddQuestion("MULTIPLE_CHOICE")} className="text-xs font-semibold gap-1">
               <Plus className="h-3.5 w-3.5" />
               <span>+ PG</span>
@@ -727,6 +966,293 @@ export default function EditExamPage() {
           </Button>
         </div>
       </div>
+
+      {/* Modal: Text to Question Parser (Input Teks Otomatis Jadi Soal) */}
+      <Dialog open={showTextImportModal} onOpenChange={setShowTextImportModal}>
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold">Input / Tempel Teks Otomatis Jadi Soal</DialogTitle>
+              <DialogDescription className="text-xs">
+                Ketik atau tempelkan teks soal dari Word, PDF, WhatsApp, atau dokumen Anda. Format soal, pilihan, kunci jawaban, dan esai akan dipisahkan secara cerdas tanpa error.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-4 my-3 text-xs">
+          {/* Preset Buttons & Auto-format toolbar */}
+          <div className="space-y-2 p-3 rounded-xl bg-muted/50 border border-border">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-foreground flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Pilih Contoh Format Cepat:
+              </span>
+              <div className="flex items-center gap-1.5">
+                {rawQuestionText && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBeautifyText}
+                      className="h-7 text-xs font-semibold gap-1 text-primary border-primary/30 hover:bg-primary/5"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      <span>Rapikan Format Teks</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setRawQuestionText("");
+                        setParsedTextResult(null);
+                      }}
+                      className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      <span>Bersihkan</span>
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {Object.entries(samplePresets).map(([k, preset]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => handleApplyPreset(k)}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-background hover:bg-primary/10 hover:text-primary border border-border transition-all cursor-pointer shadow-2xs"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Text Area Input */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block font-bold text-foreground uppercase tracking-wide">
+                Teks Soal Ujian <span className="text-destructive">*</span>
+              </label>
+              <span className="text-[11px] text-muted-foreground">
+                Mendukung nomor 1., A., B., C., Kunci, Bobot, Benar/Salah, dan Esai
+              </span>
+            </div>
+            <Textarea
+              placeholder={`Tempelkan atau ketik soal di sini, contoh:
+1. Berapakah hasil dari 25 + 15?
+A. 30
+B. 35
+C. 40
+D. 45
+Kunci: C
+Pembahasan: 25 + 15 = 40.
+
+2. Candi Borobudur terletak di Jawa Tengah.
+A. Benar
+B. Salah
+Kunci: Benar
+
+3. Jelaskan proses fotosintesis pada tumbuhan hijau!`}
+              value={rawQuestionText}
+              onChange={(e) => {
+                setRawQuestionText(e.target.value);
+                if (e.target.value.trim()) {
+                  const res = parseQuestionsFromRawText(e.target.value);
+                  setParsedTextResult(res);
+                } else {
+                  setParsedTextResult(null);
+                }
+              }}
+              rows={9}
+              className="font-mono text-xs leading-relaxed"
+            />
+          </div>
+
+          {/* Real-time Parse Results & Interactive Preview */}
+          {parsedTextResult && (
+            <div className="space-y-3 pt-2 border-t border-border">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={parsedTextResult.validCount > 0 ? "default" : "destructive"}
+                    className="text-xs font-bold bg-emerald-600 hover:bg-emerald-600 text-white"
+                  >
+                    ✨ {parsedTextResult.validCount} Soal Berhasil Dikenali
+                  </Badge>
+                  <span className="text-[11px] text-muted-foreground">
+                    ({parsedTextResult.questions.filter((q: any) => q.type === "MULTIPLE_CHOICE").length} PG,{" "}
+                    {parsedTextResult.questions.filter((q: any) => q.type === "TRUE_FALSE").length} BS,{" "}
+                    {parsedTextResult.questions.filter((q: any) => q.type === "ESSAY").length} Esai)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs font-medium">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editModalTextMode"
+                      checked={textImportMode === "APPEND"}
+                      onChange={() => setTextImportMode("APPEND")}
+                      className="text-primary"
+                    />
+                    <span>Tambahkan ke Soal Ada</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editModalTextMode"
+                      checked={textImportMode === "REPLACE"}
+                      onChange={() => setTextImportMode("REPLACE")}
+                      className="text-primary"
+                    />
+                    <span>Gantikan Lembar Soal</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Preview List with Interactive Key Toggle & Type Switcher */}
+              <div className="max-h-72 overflow-y-auto space-y-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-border">
+                {parsedTextResult.questions.map((q: any, qIdx: number) => (
+                  <div
+                    key={qIdx}
+                    className="p-3 rounded-xl bg-background border border-border space-y-2.5 text-xs shadow-xs transition-all"
+                  >
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-foreground px-2 py-0.5 rounded bg-muted">
+                          No. {qIdx + 1}
+                        </span>
+
+                        {/* Question Type Switcher */}
+                        <select
+                          value={q.type}
+                          onChange={(e: any) => handleUpdatePreviewQuestionType(qIdx, e.target.value)}
+                          className="h-6 text-[11px] font-bold rounded-md bg-muted/60 border border-border px-1.5 text-foreground cursor-pointer focus:outline-none"
+                        >
+                          <option value="MULTIPLE_CHOICE">Pilihan Ganda (PG)</option>
+                          <option value="TRUE_FALSE">Benar / Salah (BS)</option>
+                          <option value="ESSAY">Esai / Uraian</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-muted/40 px-2 py-0.5 rounded-md border border-border">
+                          <span className="text-[11px] text-muted-foreground font-semibold">Bobot:</span>
+                          <input
+                            type="number"
+                            min="0.5"
+                            step="0.5"
+                            value={q.points}
+                            onChange={(e) => handleUpdatePreviewQuestionPoints(qIdx, parseFloat(e.target.value))}
+                            className="w-12 h-5 text-center text-[11px] font-bold bg-background border border-input rounded"
+                          />
+                          <span className="text-[11px] text-muted-foreground">Poin</span>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePreviewQuestion(qIdx)}
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
+                          title="Hapus soal ini"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <p className="font-semibold text-foreground leading-relaxed">{q.questionText}</p>
+
+                    {/* Interactive Options list - Click to toggle correct key! */}
+                    {q.type !== "ESSAY" && q.options && q.options.length > 0 && (
+                      <div className="space-y-1 pt-1">
+                        <p className="text-[10px] text-muted-foreground italic">
+                          💡 Klik pada kotak opsi di bawah untuk mengubah kunci jawaban yang benar:
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {q.options.map((opt: any, optIdx: number) => (
+                            <div
+                              key={optIdx}
+                              onClick={() => handleTogglePreviewOptionKey(qIdx, opt.key)}
+                              className={cn(
+                                "p-2 rounded-lg border text-[11px] cursor-pointer transition-all flex items-center justify-between gap-2 select-none",
+                                opt.isCorrect
+                                  ? "border-emerald-500 bg-emerald-50 text-emerald-900 font-bold dark:bg-emerald-950/40 dark:text-emerald-300 ring-2 ring-emerald-500/20 shadow-xs"
+                                  : "border-border bg-background text-muted-foreground hover:border-emerald-300 hover:bg-muted/30"
+                              )}
+                            >
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="font-bold">{opt.key}.</span>
+                                <span className="truncate">{opt.text}</span>
+                              </div>
+                              {opt.isCorrect ? (
+                                <Badge className="text-[9px] px-1.5 py-0 bg-emerald-600 text-white font-bold shrink-0">
+                                  Kunci ✓
+                                </Badge>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0">
+                                  Pilih Kunci
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {q.type === "ESSAY" && (
+                      <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300">
+                        ✍️ <strong>Soal Esai:</strong> Siswa akan menjawab dengan mengetik teks uraian bebas.
+                      </div>
+                    )}
+
+                    {q.explanation && (
+                      <p className="text-[11px] text-muted-foreground pt-1.5 border-t border-border/60">
+                        <strong>Pembahasan:</strong> {q.explanation}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setShowTextImportModal(false);
+              setRawQuestionText("");
+              setParsedTextResult(null);
+            }}
+          >
+            Batal
+          </Button>
+          <Button
+            type="button"
+            isLoading={isApplyingText}
+            disabled={!parsedTextResult || parsedTextResult.validCount === 0 || isApplyingText}
+            onClick={handleApplyTextQuestions}
+            className="font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white gap-2 shadow-md"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span>
+              Masukkan {parsedTextResult?.validCount || 0} Soal ke Lembar Ujian
+            </span>
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }
