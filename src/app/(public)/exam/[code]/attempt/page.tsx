@@ -90,6 +90,11 @@ export default function ExamAttemptPage() {
   const [showMobileGrid, setShowMobileGrid] = useState(false);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const answersRef = useRef(answers);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
 
   // Initialize sound state & narrator listener
   useEffect(() => {
@@ -146,6 +151,7 @@ export default function ExamAttemptPage() {
       setAttemptData(attempt);
       setQuestions(attempt.questions);
       setAnswers(attempt.answers || {});
+      answersRef.current = attempt.answers || {};
       setTimeRemaining(attempt.attempt.timeRemainingSeconds);
     } catch {
       toast.error("Gagal memuat sesi pengerjaan ujian.");
@@ -230,6 +236,25 @@ export default function ExamAttemptPage() {
     }
   };
 
+  // Flush any pending essay save immediately (e.g. before submit, navigate, or blur)
+  const flushPendingEssaySave = async (targetQuestionId?: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
+    const qId = targetQuestionId || questions[currentIdx]?.id;
+    if (!qId) return;
+
+    const currentAnswer = answersRef.current[qId];
+    if (currentAnswer && currentAnswer.answerText !== undefined) {
+      await saveAnswerToServer(qId, {
+        answerText: currentAnswer.answerText,
+        revision: currentAnswer.revision || 1,
+      });
+    }
+  };
+
   // 4. Handle Option Select (MCQ / TF)
   const handleSelectOption = (optionId: string) => {
     const q = questions[currentIdx];
@@ -250,10 +275,11 @@ export default function ExamAttemptPage() {
     };
 
     setAnswers(updated);
+    answersRef.current = updated;
     saveAnswerToServer(q.id, { selectedOptionId: optionId, revision: nextRevision });
   };
 
-  // 5. Handle Essay Text Change (Debounced 2s)
+  // 5. Handle Essay Text Change (Debounced 500ms for fast instant persistence)
   const handleEssayChange = (text: string) => {
     const q = questions[currentIdx];
     if (!q) return;
@@ -271,6 +297,7 @@ export default function ExamAttemptPage() {
     };
 
     setAnswers(updated);
+    answersRef.current = updated;
     setSaveStatus("saving");
 
     if (debounceTimerRef.current) {
@@ -279,7 +306,8 @@ export default function ExamAttemptPage() {
 
     debounceTimerRef.current = setTimeout(() => {
       saveAnswerToServer(q.id, { answerText: text, revision: nextRevision });
-    }, 2000);
+      debounceTimerRef.current = null;
+    }, 500);
   };
 
   // 6. Toggle Flag
@@ -291,9 +319,10 @@ export default function ExamAttemptPage() {
     }));
   };
 
-  // Question navigation with audio
+  // Question navigation with audio & autosave flush
   const goToQuestion = (idx: number) => {
     if (idx < 0 || idx >= questions.length || idx === currentIdx) return;
+    flushPendingEssaySave(questions[currentIdx]?.id);
     narrator.stop();
     sounds.playNavigate();
     setCurrentIdx(idx);
@@ -315,10 +344,13 @@ export default function ExamAttemptPage() {
   const handleAutoSubmit = async () => {
     narrator.stop();
     if (!attemptData?.attempt?.id) return;
+    await flushPendingEssaySave();
     setIsSubmitting(true);
     try {
       await fetch(`/api/v1/student/attempts/${attemptData.attempt.id}/submit`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: answersRef.current }),
       });
       router.push(`/exam/${code}/result`);
     } catch {
@@ -329,10 +361,13 @@ export default function ExamAttemptPage() {
   const handleManualSubmit = async () => {
     narrator.stop();
     if (!attemptData?.attempt?.id) return;
+    await flushPendingEssaySave();
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/v1/student/attempts/${attemptData.attempt.id}/submit`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: answersRef.current }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -821,22 +856,40 @@ export default function ExamAttemptPage() {
                     </div>
                   )}
 
-                  {/* ESSAY: Clean Textarea with Autosave status */}
+                  {/* ESSAY: Clean Textarea with Real-Time Autosave status */}
                   {currentQ.type === "ESSAY" && (
                     <div className="space-y-2 mt-4">
                       <Textarea
                         value={currentAns?.answerText || ""}
                         onChange={(e) => handleEssayChange(e.target.value)}
+                        onBlur={() => flushPendingEssaySave(currentQ.id)}
                         placeholder="Ketik jawaban lengkap dan rapi Anda di sini..."
                         rows={7}
                         className="w-full text-base sm:text-lg p-4 leading-relaxed resize-y focus-visible:ring-[#00C0FA] border-2 border-slate-200 rounded-2xl bg-slate-50 focus:bg-white transition-all font-sans"
                       />
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-500 px-1">
-                        <span className="flex items-center gap-1 text-emerald-600">
-                          <Sparkles className="h-3.5 w-3.5" />
-                          Jawaban tersimpan otomatis saat Anda berhenti mengetik.
-                        </span>
-                        <span>{(currentAns?.answerText || "").length} Karakter</span>
+                      <div className="flex items-center justify-between text-xs font-semibold px-1">
+                        {saveStatus === "saving" ? (
+                          <span className="flex items-center gap-1.5 text-amber-600 font-bold animate-pulse">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Menyimpan jawaban ke server...
+                          </span>
+                        ) : saveStatus === "saved" && (currentAns?.answerText || "").trim().length > 0 ? (
+                          <span className="flex items-center gap-1.5 text-emerald-600 font-bold">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Jawaban tersimpan otomatis di server ✓
+                          </span>
+                        ) : saveStatus === "error" ? (
+                          <span className="flex items-center gap-1.5 text-rose-600 font-bold">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            Koneksi terganggu, sistem akan menyimpan ulang saat dikumpulkan.
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-slate-500 font-medium">
+                            <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                            Jawaban tersimpan otomatis saat Anda mengetik.
+                          </span>
+                        )}
+                        <span className="text-slate-500 font-medium">{(currentAns?.answerText || "").length} Karakter</span>
                       </div>
                     </div>
                   )}

@@ -6,6 +6,45 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   try {
     const { id: attemptId } = params;
 
+    // Optional client answers payload to guarantee all pending answers are persisted
+    let clientAnswers: Record<string, { selectedOptionId?: string | null; answerText?: string | null; revision?: number }> | null = null;
+    try {
+      const body = await req.json();
+      if (body?.answers && typeof body.answers === "object") {
+        clientAnswers = body.answers;
+      }
+    } catch {
+      // Empty or non-JSON body is acceptable
+    }
+
+    if (clientAnswers) {
+      const saveTimestamp = new Date();
+      for (const [qId, ans] of Object.entries(clientAnswers)) {
+        if (!ans) continue;
+        const selId = ans.selectedOptionId || null;
+        const txt = ans.answerText !== undefined && ans.answerText !== null ? String(ans.answerText).trim() : null;
+        const rev = Number(ans.revision) || 1;
+
+        await prisma.answer.upsert({
+          where: { attemptId_questionId: { attemptId, questionId: qId } },
+          update: {
+            selectedOptionId: selId,
+            answerText: txt && txt.length > 0 ? txt : null,
+            revision: rev,
+            savedAt: saveTimestamp,
+          },
+          create: {
+            attemptId,
+            questionId: qId,
+            selectedOptionId: selId,
+            answerText: txt && txt.length > 0 ? txt : null,
+            revision: rev,
+            savedAt: saveTimestamp,
+          },
+        });
+      }
+    }
+
     const attempt = await prisma.examAttempt.findUnique({
       where: { id: attemptId },
       include: {
