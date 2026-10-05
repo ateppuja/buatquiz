@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import { formatDateTimeLocal, parseDateInput, cn, compressAndReadFileAsDataUrl } from "@/lib/utils";
 import { parseQuestionsFromRawText, beautifyQuestionText } from "@/lib/text-parser";
+import { MathToolbar } from "@/components/ui/math-toolbar";
+import { MathRenderer } from "@/components/ui/math-renderer";
 import { toast } from "sonner";
 
 export default function CreateExamWizardPage() {
@@ -270,6 +272,28 @@ Pembahasan: Konduksi tanpa zat perantara, konveksi disertai zat perantara, radia
 2. Mengapa kita harus menjaga kelestarian lingkungan dan hutan?
 Bobot: 2
 Pembahasan: Untuk menjaga keseimbangan ekosistem, mencegah bencana banjir/longsor, dan menjamin ketersediaan air bersih.`,
+    },
+    MATH: {
+      label: "📐 Matematika & Rumus (LaTeX)",
+      text: `1. Berapakah hasil penjumlahan pecahan campuran berikut: 2\\frac{1}{2} + 1\\frac{2}{3} = ...?
+A. 4\\frac{1}{6}
+B. 3\\frac{5}{6}
+C. 4\\frac{1}{3}
+D. 3\\frac{2}{3}
+Kunci: A
+Pembahasan: 2\\frac{1}{2} + 1\\frac{2}{3} = \\frac{5}{2} + \\frac{5}{3} = \\frac{15}{6} + \\frac{10}{6} = \\frac{25}{6} = 4\\frac{1}{6}.
+
+2. Nilai x yang memenuhi persamaan 2x + 6 = 14 adalah:
+A. 2
+B. 4
+C. 6
+D. 8
+Kunci: B
+Pembahasan: 2x = 14 - 6 = 8, sehingga x = 4.
+
+3. Sederhanakan bentuk akar berikut: \\sqrt{48} + \\sqrt{12} - \\sqrt{27} !
+Bobot: 2
+Pembahasan: \\sqrt{48} + \\sqrt{12} - \\sqrt{27} = 4\\sqrt{3} + 2\\sqrt{3} - 3\\sqrt{3} = 3\\sqrt{3}.`,
     },
     WA: {
       label: "⚡ Format Cepat / WhatsApp",
@@ -1324,6 +1348,20 @@ Jawaban: B`,
                     rows={3}
                     className="text-sm font-medium leading-relaxed"
                   />
+
+                  {/* Math / Formula Toolbar Assistant */}
+                  <div className="mt-2">
+                    <MathToolbar
+                      onInsert={(code) =>
+                        updateQuestionField(
+                          qIdx,
+                          "questionText",
+                          (q.questionText ? q.questionText + " " : "") + code
+                        )
+                      }
+                      previewText={q.questionText}
+                    />
+                  </div>
                 </div>
 
                 {/* Attached Question Image Preview */}
@@ -1387,34 +1425,49 @@ Jawaban: B`,
                     <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Pilihan Jawaban & Kunci Jawaban (Pilih 1 Kunci yang Benar):
                     </label>
-                    {q.options.map((opt: any, optIdx: number) => (
-                      <div key={opt.key} className="flex items-center gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => setCorrectOption(qIdx, optIdx)}
-                          className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-xs uppercase border transition-colors",
-                            opt.isCorrect
-                              ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
-                              : "border-border bg-muted text-muted-foreground hover:bg-muted/80"
+                    {q.options.map((opt: any, optIdx: number) => {
+                      const hasMath = opt.text && (opt.text.includes("\\") || opt.text.includes("$"));
+                      return (
+                        <div key={opt.key} className="flex flex-col gap-1.5 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50">
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setCorrectOption(qIdx, optIdx)}
+                              className={cn(
+                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-xs uppercase border transition-colors cursor-pointer",
+                                opt.isCorrect
+                                  ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                                  : "border-border bg-muted text-muted-foreground hover:bg-muted/80"
+                              )}
+                              title={opt.isCorrect ? "Kunci Jawaban Benar" : "Klik untuk jadikan kunci jawaban"}
+                            >
+                              {opt.key}
+                            </button>
+                            <Input
+                              placeholder={`Isi pilihan ${opt.key}...`}
+                              value={opt.text}
+                              onChange={(e) => updateOptionText(qIdx, optIdx, e.target.value)}
+                              className={cn("h-9 text-xs bg-white flex-1", opt.isCorrect ? "border-emerald-500 font-semibold" : "")}
+                            />
+                            {opt.isCorrect && (
+                              <Badge variant="success" className="text-[10px] shrink-0">
+                                Kunci Jawaban
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Live Math Preview for Option */}
+                          {hasMath && (
+                            <div className="pl-11 pr-2 pb-0.5 text-xs text-[#4B7914] font-bold flex items-center gap-1.5">
+                              <span className="text-[10px] text-slate-400 font-semibold">Rumus:</span>
+                              <span className="bg-white px-2 py-0.5 rounded border border-[#D5EFA9]">
+                                <MathRenderer content={opt.text} />
+                              </span>
+                            </div>
                           )}
-                          title={opt.isCorrect ? "Kunci Jawaban Benar" : "Klik untuk jadikan kunci jawaban"}
-                        >
-                          {opt.key}
-                        </button>
-                        <Input
-                          placeholder={`Isi pilihan ${opt.key}...`}
-                          value={opt.text}
-                          onChange={(e) => updateOptionText(qIdx, optIdx, e.target.value)}
-                          className={cn("h-9 text-xs", opt.isCorrect ? "border-emerald-500 font-semibold" : "")}
-                        />
-                        {opt.isCorrect && (
-                          <Badge variant="success" className="text-[10px] shrink-0">
-                            Kunci Jawaban
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 

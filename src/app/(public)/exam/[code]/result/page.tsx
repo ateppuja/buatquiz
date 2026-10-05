@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ConfettiCanvas } from "@/components/ui/confetti";
 import { sounds } from "@/lib/sound-effects";
+import { MathRenderer } from "@/components/ui/math-renderer";
 
 export default function ExamResultPage() {
   const params = useParams();
@@ -251,9 +252,9 @@ export default function ExamResultPage() {
                     </div>
                   </div>
 
-                  <p className="text-sm font-bold text-slate-800 mb-4 whitespace-pre-line leading-relaxed">
-                    {q.questionText}
-                  </p>
+                  <div className="text-sm font-bold text-slate-800 mb-4 whitespace-pre-line leading-relaxed">
+                    <MathRenderer content={q.questionText} />
+                  </div>
 
                   {q.questionImage && (
                     <div className="mb-4 max-w-md rounded-xl overflow-hidden border border-slate-200 shadow-xs bg-slate-50">
@@ -286,12 +287,14 @@ export default function ExamResultPage() {
                             )}
                           >
                             <span className="flex items-center gap-2.5">
-                              <span className="h-6 w-6 rounded-lg bg-white flex items-center justify-center font-bold text-slate-800 shadow-sm">
+                              <span className="h-6 w-6 rounded-lg bg-white flex items-center justify-center font-bold text-slate-800 shadow-sm shrink-0">
                                 {opt.key}
                               </span>
-                              <span>{opt.text}</span>
+                              <span className="flex-1">
+                                <MathRenderer content={opt.text} />
+                              </span>
                             </span>
-                            <div className="flex items-center gap-1.5 font-bold">
+                            <div className="flex items-center gap-1.5 font-bold shrink-0 ml-2">
                               {isStudentChoice && <span className="text-rose-600">(Pilihan Anda)</span>}
                               {isThisCorrect && <span className="text-emerald-600">✓ Kunci Jawaban</span>}
                             </div>
@@ -306,9 +309,9 @@ export default function ExamResultPage() {
                     <div className="space-y-3 mb-4">
                       <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
                         <span className="text-[11px] font-black text-slate-400 uppercase">Jawaban Anda:</span>
-                        <p className="text-xs font-semibold text-slate-800 mt-1 whitespace-pre-line">
-                          {q.studentAnswer.answerText || "(Tidak dijawab)"}
-                        </p>
+                        <div className="text-xs font-semibold text-slate-800 mt-1 whitespace-pre-line">
+                          <MathRenderer content={q.studentAnswer.answerText || "(Tidak dijawab)"} />
+                        </div>
                       </div>
                       {q.studentAnswer.feedback && (
                         <div className="rounded-2xl bg-blue-50 p-4 border border-blue-200">
@@ -328,9 +331,9 @@ export default function ExamResultPage() {
                         <HelpCircle className="h-4 w-4" />
                         Pembahasan Soal:
                       </span>
-                      <p className="text-slate-700 whitespace-pre-line leading-relaxed font-medium">
-                        {q.explanation}
-                      </p>
+                      <div className="text-slate-700 whitespace-pre-line leading-relaxed font-medium">
+                        <MathRenderer content={q.explanation} />
+                      </div>
                     </div>
                   )}
                 </div>

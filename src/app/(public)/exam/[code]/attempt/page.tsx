@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { sounds } from "@/lib/sound-effects";
 import { narrator } from "@/lib/tts-narrator";
 import { ConfettiCanvas } from "@/components/ui/confetti";
+import { MathRenderer } from "@/components/ui/math-renderer";
 
 interface Option {
   id: string;
@@ -767,7 +768,7 @@ export default function ExamAttemptPage() {
 
                   {/* Question Text Prompt */}
                   <div className="text-base sm:text-lg md:text-xl font-bold text-slate-800 mb-6 leading-relaxed whitespace-pre-line">
-                    {currentQ.questionText}
+                    <MathRenderer content={currentQ.questionText} />
                   </div>
 
                   {/* Question Image */}
@@ -814,7 +815,7 @@ export default function ExamAttemptPage() {
                                 isSelected ? "text-white" : "text-slate-800"
                               )}
                             >
-                              {opt.text}
+                              <MathRenderer content={opt.text} />
                             </span>
                           </button>
                         );
@@ -849,7 +850,9 @@ export default function ExamAttemptPage() {
                             ) : (
                               <X className="h-6 w-6 stroke-[3]" />
                             )}
-                            <span>{opt.text}</span>
+                            <span>
+                              <MathRenderer content={opt.text} />
+                            </span>
                           </button>
                         );
                       })}

@@ -46,6 +46,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
+import { MathRenderer } from "@/components/ui/math-renderer";
 import { toast } from "sonner";
 
 export default function ExamResultsPage() {
@@ -1346,9 +1347,9 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                     </div>
                   </div>
 
-                  <p className="text-sm font-semibold text-slate-900 leading-relaxed">
-                    {qs.questionText}
-                  </p>
+                  <div className="text-sm font-semibold text-slate-900 leading-relaxed">
+                    <MathRenderer content={qs.questionText} />
+                  </div>
 
                   {/* Options breakdown */}
                   {qs.options.length > 0 && (
@@ -1369,11 +1370,13 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                                 : "bg-slate-50 border-slate-200 text-slate-700"
                             )}
                           >
-                            <div className="flex items-center gap-2">
-                              <span className="font-black">({optKey})</span>
-                              <span>{opt.optionText}</span>
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="font-black shrink-0">({optKey})</span>
+                              <span className="flex-1">
+                                <MathRenderer content={opt.optionText} />
+                              </span>
                               {isCorrect && (
-                                <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-black">
+                                <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-black shrink-0">
                                   KUNCI
                                 </span>
                               )}
@@ -1436,14 +1439,14 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
 
                   <div className="text-xs space-y-1.5">
                     <p className="font-bold text-slate-700">Pertanyaan Soal:</p>
-                    <p className="text-slate-900 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                      {item.answer.questionText}
-                    </p>
+                    <div className="text-slate-900 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <MathRenderer content={item.answer.questionText} />
+                    </div>
 
                     <p className="font-bold text-slate-700 pt-1">Jawaban Murid:</p>
-                    <p className="text-slate-900 bg-blue-50/50 p-3 rounded-xl border border-blue-200 whitespace-pre-line italic">
-                      &ldquo;{item.answer.answerText || "(Murid tidak mengisi jawaban esai ini)"}&rdquo;
-                    </p>
+                    <div className="text-slate-900 bg-blue-50/50 p-3 rounded-xl border border-blue-200 whitespace-pre-line italic">
+                      <MathRenderer content={item.answer.answerText || "(Murid tidak mengisi jawaban esai ini)"} />
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -1465,7 +1468,9 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
           <div className="space-y-4 my-2 text-xs">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
               <span className="font-bold text-slate-500 uppercase text-[10px] block">Pertanyaan Soal:</span>
-              <p className="text-sm font-semibold text-slate-900">{selectedCellDetail.question.questionText}</p>
+              <div className="text-sm font-semibold text-slate-900">
+                <MathRenderer content={selectedCellDetail.question.questionText} />
+              </div>
               {selectedCellDetail.question.questionImage && (
                 <div className="mt-2 max-w-sm rounded-lg overflow-hidden border border-slate-200 bg-white">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1481,9 +1486,9 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
             {selectedCellDetail.question.type === "ESSAY" ? (
               <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 space-y-1">
                 <span className="font-bold text-blue-900 uppercase text-[10px] block">Jawaban Esai Siswa:</span>
-                <p className="text-sm text-slate-900 whitespace-pre-line">
-                  {selectedCellDetail.answer?.answerText || "(Tidak dijawab)"}
-                </p>
+                <div className="text-sm text-slate-900 whitespace-pre-line">
+                  <MathRenderer content={selectedCellDetail.answer?.answerText || "(Tidak dijawab)"} />
+                </div>
                 <div className="pt-2">
                   <Button
                     size="sm"
@@ -1515,12 +1520,14 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                           !isSelected && !isCorrect && "bg-white border-slate-200 text-slate-700"
                         )}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="font-black">({optKey})</span>
-                          <span>{opt.optionText}</span>
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="font-black shrink-0">({optKey})</span>
+                          <span className="flex-1">
+                            <MathRenderer content={opt.optionText} />
+                          </span>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
                           {isSelected && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-900 text-white">
                               Pilihan Murid
@@ -1651,7 +1658,9 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
               <span className="font-bold text-slate-500 uppercase text-[10px] block mb-1">
                 Pertanyaan Soal (Bobot Maksimal: {gradingAnswer.points} Poin):
               </span>
-              <p className="text-sm font-semibold text-slate-900">{gradingAnswer.questionText}</p>
+              <div className="text-sm font-semibold text-slate-900">
+                <MathRenderer content={gradingAnswer.questionText} />
+              </div>
               {gradingAnswer.questionImage && (
                 <div className="mt-2 max-w-sm rounded-lg overflow-hidden border border-slate-200 bg-white">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2512,9 +2521,9 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
 
                               {/* Question Text & Image */}
                               <div className="space-y-2">
-                                <p className="text-sm font-bold text-slate-900 leading-relaxed">
-                                  {q.questionText}
-                                </p>
+                                <div className="text-sm font-bold text-slate-900 leading-relaxed">
+                                  <MathRenderer content={q.questionText} />
+                                </div>
                                 {q.questionImage && (
                                   <div className="rounded-xl overflow-hidden border border-slate-200 max-w-sm">
                                     <img
@@ -2532,9 +2541,9 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                                   <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
                                     Jawaban Tertulis Siswa:
                                   </span>
-                                  <p className="text-xs text-slate-800 font-medium whitespace-pre-wrap italic">
-                                    &ldquo;{ans?.answerText || "(Siswa tidak mengisi jawaban)"}&rdquo;
-                                  </p>
+                                  <div className="text-xs text-slate-800 font-medium whitespace-pre-wrap italic">
+                                    <MathRenderer content={ans?.answerText || "(Siswa tidak mengisi jawaban)"} />
+                                  </div>
                                   {ans?.awardedPoints !== null && ans?.awardedPoints !== undefined && (
                                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                                       <span className="font-bold text-slate-700">
@@ -2565,11 +2574,13 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                                             !isChosen && !isKey && "bg-white border-slate-200 text-slate-600 opacity-75"
                                           )}
                                         >
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-black">{opt.optionKey}.</span>
-                                            <span>{opt.optionText}</span>
+                                          <div className="flex items-center gap-2 flex-1">
+                                            <span className="font-black shrink-0">{opt.optionKey}.</span>
+                                            <span className="flex-1">
+                                              <MathRenderer content={opt.optionText} />
+                                            </span>
                                           </div>
-                                          <div className="flex items-center gap-1 font-bold text-[10px]">
+                                          <div className="flex items-center gap-1 font-bold text-[10px] shrink-0 ml-2">
                                             {isChosen && isKey && (
                                               <span className="px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900">
                                                 Jawaban Siswa (Kunci ✅)

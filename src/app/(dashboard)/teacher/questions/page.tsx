@@ -16,6 +16,7 @@ import {
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MathRenderer } from "@/components/ui/math-renderer";
 import { toast } from "sonner";
 
 export default function TeacherQuestionsBankPage() {
@@ -155,9 +156,9 @@ export default function TeacherQuestionsBankPage() {
                 <span className="text-xs font-bold text-foreground">Bobot: {q.points} Poin</span>
               </div>
 
-              <p className="text-sm font-medium text-foreground whitespace-pre-line leading-relaxed">
-                {q.questionText}
-              </p>
+              <div className="text-sm font-medium text-foreground whitespace-pre-line leading-relaxed">
+                <MathRenderer content={q.questionText} />
+              </div>
 
               {q.options && q.options.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
@@ -165,13 +166,19 @@ export default function TeacherQuestionsBankPage() {
                     <div
                       key={opt.id}
                       className={cn(
-                        "p-2 rounded-lg border",
+                        "p-2 rounded-lg border flex items-center justify-between gap-2",
                         opt.isCorrect
                           ? "border-emerald-500 bg-emerald-50/50 text-emerald-800 font-bold dark:bg-emerald-950/40 dark:text-emerald-300"
                           : "border-border text-muted-foreground"
                       )}
                     >
-                      {opt.optionKey}. {opt.optionText} {opt.isCorrect && "✓ (Kunci Jawaban)"}
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <span className="font-bold">{opt.optionKey}.</span>
+                        <span className="flex-1">
+                          <MathRenderer content={opt.optionText} />
+                        </span>
+                      </div>
+                      {opt.isCorrect && <span className="shrink-0 text-[10px] font-black text-emerald-700">✓ KUNCI</span>}
                     </div>
                   ))}
                 </div>
@@ -179,7 +186,7 @@ export default function TeacherQuestionsBankPage() {
 
               {q.explanation && (
                 <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-2.5 text-xs text-muted-foreground">
-                  <strong>Pembahasan:</strong> {q.explanation}
+                  <strong>Pembahasan:</strong> <MathRenderer content={q.explanation} />
                 </div>
               )}
             </Card>

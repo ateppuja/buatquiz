@@ -21,6 +21,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
+import { MathRenderer } from "@/components/ui/math-renderer";
 import { toast } from "sonner";
 
 export default function PrintExamPage() {
@@ -359,7 +360,7 @@ export default function PrintExamPage() {
                         <span className="font-bold shrink-0">{qNumber}.</span>
                         <div className="flex-1 space-y-2">
                           <p className="font-normal text-justify whitespace-pre-line leading-relaxed">
-                            {q.questionText}
+                            <MathRenderer content={q.questionText} />
                           </p>
 
                           {q.questionImage && (
@@ -399,7 +400,9 @@ export default function PrintExamPage() {
                               <span className="font-bold shrink-0">
                                 {printMode === "TEACHER_KEY" && isCorrect ? `[✓ ${optKey}]` : `(${optKey})`}
                               </span>
-                              <span className="flex-1">{opt.optionText || opt.text}</span>
+                              <span className="flex-1">
+                                <MathRenderer content={opt.optionText || opt.text} />
+                              </span>
                               {printMode === "TEACHER_KEY" && isCorrect && (
                                 <span className="text-[10px] uppercase tracking-wider font-black text-emerald-800 print:text-black">
                                   KUNCI
@@ -413,7 +416,7 @@ export default function PrintExamPage() {
                       {/* Explanation (if Teacher Key mode) */}
                       {printMode === "TEACHER_KEY" && showExplanations && q.explanation && (
                         <div className="ml-6 p-2 rounded bg-amber-50 border border-amber-200 text-xs text-amber-900 print:bg-slate-100 print:border-black">
-                          <strong>Pembahasan:</strong> {q.explanation}
+                          <strong>Pembahasan:</strong> <MathRenderer content={q.explanation} />
                         </div>
                       )}
                     </div>
@@ -442,7 +445,9 @@ export default function PrintExamPage() {
                         <span className="font-bold shrink-0">{qNumber}.</span>
                         <div className="flex-1 space-y-2">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <p className="font-normal text-justify flex-1">{q.questionText}</p>
+                            <p className="font-normal text-justify flex-1">
+                              <MathRenderer content={q.questionText} />
+                            </p>
                             <div className="flex items-center gap-3 shrink-0 pl-2">
                               {printMode === "STUDENT" ? (
                                 <div className="flex items-center gap-3 text-xs font-bold">
@@ -497,7 +502,9 @@ export default function PrintExamPage() {
                       <div className="flex items-start gap-2">
                         <span className="font-bold shrink-0">{qNumber}.</span>
                         <div className="flex-1 space-y-2">
-                          <p className="font-normal text-justify leading-relaxed">{q.questionText}</p>
+                          <p className="font-normal text-justify leading-relaxed">
+                            <MathRenderer content={q.questionText} />
+                          </p>
 
                           {q.questionImage && (
                             <div className="my-2 max-w-md">
