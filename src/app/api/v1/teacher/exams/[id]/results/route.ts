@@ -56,6 +56,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     });
     const resultMap = new Map(examResults.map((r) => [r.studentId, r]));
 
+    const schoolClasses = await prisma.class.findMany({
+      where: { schoolId: session.schoolId },
+      orderBy: { name: "asc" },
+    });
+
     // Group by student
     const studentMap = new Map<string, any>();
 
@@ -66,7 +71,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           studentId: att.studentId,
           nis: att.student.nis,
           name: att.student.name,
+          classId: att.student.classId,
           className: att.student.class.name,
+          pin: att.student.pin,
           finalScore: res?.finalScore ?? att.finalScore ?? 0,
           highestScore: res?.highestScore ?? att.finalScore ?? 0,
           latestScore: res?.latestScore ?? att.finalScore ?? 0,
@@ -155,6 +162,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         questions: exam.questions,
         stats,
         participants,
+        classes: schoolClasses.map((c) => ({ id: c.id, name: c.name, gradeLevel: c.gradeLevel })),
       },
     });
   } catch (error: any) {

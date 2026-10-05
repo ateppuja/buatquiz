@@ -32,6 +32,9 @@ import {
   Mail,
   Send,
   Copy,
+  Trash2,
+  RotateCcw,
+  UserX,
   ExternalLink,
   MessageCircle,
   Eye,
@@ -89,6 +92,23 @@ export default function ExamResultsPage() {
   const [parentPhone, setParentPhone] = useState("");
   const [customTeacherNote, setCustomTeacherNote] = useState("Alhamdulillah, teruslah bersemangat dalam menuntut ilmu dan tingkatkan prestasi belajarmu!");
   const [passingScore, setPassingScore] = useState<number>(75);
+
+  // Edit Participant Modal State
+  const [editingParticipant, setEditingParticipant] = useState<any>(null);
+  const [editName, setEditName] = useState("");
+  const [editNis, setEditNis] = useState("");
+  const [editClassId, setEditClassId] = useState("");
+  const [isSavingParticipant, setIsSavingParticipant] = useState(false);
+
+  // Delete Participant Modal State
+  const [deletingParticipant, setDeletingParticipant] = useState<any>(null);
+  const [deleteMode, setDeleteMode] = useState<"exam_only" | "permanent">("exam_only");
+  const [isDeletingParticipant, setIsDeletingParticipant] = useState(false);
+
+  // Reset Attempt Modal State
+  const [resettingParticipant, setResettingParticipant] = useState<any>(null);
+  const [resetReason, setResetReason] = useState("Ujian ulang atas persetujuan guru pengampu");
+  const [isResettingAttempt, setIsResettingAttempt] = useState(false);
 
   const fetchResults = async () => {
     try {
@@ -188,7 +208,7 @@ export default function ExamResultsPage() {
     }
   };
 
-  const { exam, questions = [], stats = {}, participants = [] } = data || {};
+  const { exam, questions = [], stats = {}, participants = [], classes = [] } = data || {};
 
   // Per-Question Statistics (Accuracy & Option Distribution)
   const questionStats = useMemo<any[]>(() => {
@@ -447,6 +467,111 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
 
     navigator.clipboard.writeText(text);
     toast.success("Format teks laporan berhasil disalin ke clipboard!");
+  };
+
+  // Participant Management Handlers
+  const openEditParticipantModal = (participant: any) => {
+    setEditingParticipant(participant);
+    setEditName(participant.name || "");
+    setEditNis(participant.nis || "");
+    setEditClassId(participant.classId || "");
+  };
+
+  const handleSaveParticipant = async () => {
+    if (!editingParticipant) return;
+    if (!editName.trim()) {
+      toast.error("Nama siswa tidak boleh kosong.");
+      return;
+    }
+
+    setIsSavingParticipant(true);
+    try {
+      const res = await fetch(`/api/v1/teacher/exams/${examId}/participants/${editingParticipant.studentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName.trim(),
+          nis: editNis.trim() || null,
+          classId: editClassId || undefined,
+        }),
+      });
+
+      const resData = await res.json();
+      if (resData.success) {
+        toast.success(resData.message || "Data peserta berhasil diperbarui!");
+        setEditingParticipant(null);
+        fetchResults();
+      } else {
+        toast.error(resData.error?.message || "Gagal memperbarui data peserta.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat menyimpan data peserta.");
+    } finally {
+      setIsSavingParticipant(false);
+    }
+  };
+
+  const openDeleteParticipantModal = (participant: any) => {
+    setDeletingParticipant(participant);
+    setDeleteMode("exam_only");
+  };
+
+  const handleDeleteParticipant = async () => {
+    if (!deletingParticipant) return;
+
+    setIsDeletingParticipant(true);
+    try {
+      const res = await fetch(`/api/v1/teacher/exams/${examId}/participants/${deletingParticipant.studentId}?mode=${deleteMode}`, {
+        method: "DELETE",
+      });
+
+      const resData = await res.json();
+      if (resData.success) {
+        toast.success(resData.message || "Peserta berhasil dihapus.");
+        setDeletingParticipant(null);
+        fetchResults();
+      } else {
+        toast.error(resData.error?.message || "Gagal menghapus peserta.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat menghapus peserta.");
+    } finally {
+      setIsDeletingParticipant(false);
+    }
+  };
+
+  const openResetAttemptModal = (participant: any) => {
+    setResettingParticipant(participant);
+    setResetReason("Ujian ulang atas persetujuan guru pengampu");
+  };
+
+  const handleResetAttempt = async () => {
+    if (!resettingParticipant) return;
+
+    setIsResettingAttempt(true);
+    try {
+      const res = await fetch(`/api/v1/teacher/exams/${examId}/participants/reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: resettingParticipant.studentId,
+          reason: resetReason.trim() || "Reset pengerjaan ujian oleh guru",
+        }),
+      });
+
+      const resData = await res.json();
+      if (resData.success) {
+        toast.success(resData.message || "Percobaan ujian berhasil direset!");
+        setResettingParticipant(null);
+        fetchResults();
+      } else {
+        toast.error(resData.error?.message || "Gagal mereset percobaan ujian.");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat mereset ujian.");
+    } finally {
+      setIsResettingAttempt(false);
+    }
   };
 
   if (isLoading || !data) {
@@ -790,28 +915,56 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                       const att = p.selectedAttempt;
                       return (
                         <tr key={p.studentId} className="hover:bg-slate-50/80 transition-colors">
-                          {/* Sticky Student Name & Class */}
+                          {/* Sticky Student Name & Class & Actions */}
                           <td className="p-3 sticky left-0 bg-white hover:bg-slate-50 z-10 border-r border-slate-200">
                             <div className="flex items-center justify-between gap-2">
-                              <div>
-                                <div className="font-bold text-slate-900 leading-snug">
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-slate-900 leading-snug truncate" title={p.name}>
                                   {p.name}
                                 </div>
                                 <div className="text-[10px] text-slate-500 font-semibold mt-0.5">
                                   Kelas {p.className} {p.nis ? `(${p.nis})` : ""}
                                 </div>
                               </div>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenSendModal(p, "INDIVIDUAL");
-                                }}
-                                title={`Kirim laporan hasil ${p.name} ke Email / Telegram Orang Tua`}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-[#0088cc] hover:bg-sky-50 transition-colors shrink-0 cursor-pointer"
-                              >
-                                <Send className="h-3.5 w-3.5" />
-                              </button>
+
+                              {/* Action Buttons: Edit, Delete, Send */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditParticipantModal(p);
+                                  }}
+                                  title={`Edit nama / data ${p.name}`}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDeleteParticipantModal(p);
+                                  }}
+                                  title={`Hapus ${p.name} dari ujian ini`}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenSendModal(p, "INDIVIDUAL");
+                                  }}
+                                  title={`Kirim laporan hasil ${p.name} ke Email / Telegram Orang Tua`}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-[#0088cc] hover:bg-sky-50 transition-colors cursor-pointer"
+                                >
+                                  <Send className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             </div>
                           </td>
 
@@ -926,7 +1079,43 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openEditParticipantModal(p)}
+                      className="text-xs font-bold gap-1 border-slate-300 hover:bg-slate-100 rounded-xl cursor-pointer"
+                      title={`Edit data ${p.name}`}
+                    >
+                      <Edit className="h-3.5 w-3.5 text-amber-600" />
+                      <span>Edit</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openResetAttemptModal(p)}
+                      className="text-xs font-bold gap-1 border-amber-300 text-amber-900 bg-amber-50/60 hover:bg-amber-100 rounded-xl cursor-pointer"
+                      title={`Reset pengerjaan ujian untuk ${p.name}`}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 text-amber-600" />
+                      <span>Reset</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openDeleteParticipantModal(p)}
+                      className="text-xs font-bold gap-1 border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-100 rounded-xl cursor-pointer"
+                      title={`Hapus ${p.name} dari ujian ini`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                      <span>Hapus</span>
+                    </Button>
+
                     <Button
                       type="button"
                       size="sm"
@@ -936,10 +1125,10 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                       title={`Kirim laporan hasil ${p.name} ke Email / Telegram Orang Tua`}
                     >
                       <Send className="h-3.5 w-3.5 text-[#0088cc]" />
-                      <span>Kirim ke Orang Tua</span>
+                      <span>Kirim Rapor</span>
                     </Button>
 
-                    <div className="text-right">
+                    <div className="text-right pl-2 border-l border-slate-200">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                         Nilai Akhir
                       </span>
@@ -1792,6 +1981,239 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
         <DialogFooter className="border-t border-slate-100 pt-3">
           <Button variant="outline" onClick={() => setShowSendModal(false)} className="text-xs font-bold">
             Tutup
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* ✏️ MODAL: EDIT DATA PESERTA */}
+      <Dialog open={Boolean(editingParticipant)} onOpenChange={() => setEditingParticipant(null)}>
+        <DialogHeader>
+          <div className="flex items-center gap-2 text-amber-600 mb-1">
+            <Edit className="h-5 w-5" />
+            <span className="text-xs font-black uppercase tracking-wider">Perbarui Identitas Siswa</span>
+          </div>
+          <DialogTitle className="text-lg font-black text-slate-900">
+            Edit Data Peserta Ujian
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">
+            Ubah nama lengkap, NIS, atau kelas siswa. Perubahan ini akan otomatis sinkron pada lembar jawaban, rekapitulasi nilai, dan rapor.
+          </DialogDescription>
+        </DialogHeader>
+
+        {editingParticipant && (
+          <div className="space-y-4 my-2 text-xs">
+            <div>
+              <label className="block font-black text-slate-700 uppercase tracking-wider text-[11px] mb-1">
+                Nama Lengkap Siswa <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Contoh: Muhammad Fatih"
+                className="h-10 text-xs font-bold rounded-xl"
+                autoFocus
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-black text-slate-700 uppercase tracking-wider text-[11px] mb-1">
+                  Nomor Induk Siswa (NIS)
+                </label>
+                <Input
+                  value={editNis}
+                  onChange={(e) => setEditNis(e.target.value)}
+                  placeholder="Contoh: 2026001 (Opsional)"
+                  className="h-10 text-xs rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-black text-slate-700 uppercase tracking-wider text-[11px] mb-1">
+                  Kelas Siswa
+                </label>
+                <select
+                  value={editClassId}
+                  onChange={(e) => setEditClassId(e.target.value)}
+                  className="w-full h-10 bg-white border border-slate-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#7AB82A] cursor-pointer"
+                >
+                  {classes.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      Kelas {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="font-bold text-slate-700 text-[11px]">Informasi Ujian:</span>
+              <p className="text-slate-600 text-[11px]">
+                Total Percobaan: <strong>{editingParticipant.totalAttempts}x</strong> • Nilai Saat Ini: <strong>{editingParticipant.effectiveScore ?? editingParticipant.finalScore ?? 0} Poin</strong>
+              </p>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="border-t border-slate-100 pt-3">
+          <Button variant="outline" onClick={() => setEditingParticipant(null)} className="text-xs font-bold">
+            Batal
+          </Button>
+          <Button
+            onClick={handleSaveParticipant}
+            isLoading={isSavingParticipant}
+            className="text-xs font-black bg-[#7AB82A] hover:bg-[#689f22] text-white shadow-xs"
+          >
+            Simpan Perubahan
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* 🗑️ MODAL: HAPUS PESERTA DARI UJIAN */}
+      <Dialog open={Boolean(deletingParticipant)} onOpenChange={() => setDeletingParticipant(null)}>
+        <DialogHeader>
+          <div className="flex items-center gap-2 text-rose-600 mb-1">
+            <Trash2 className="h-5 w-5" />
+            <span className="text-xs font-black uppercase tracking-wider">Konfirmasi Hapus Peserta</span>
+          </div>
+          <DialogTitle className="text-lg font-black text-slate-900">
+            Hapus Peserta: {deletingParticipant?.name}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">
+            Pilih jenis penghapusan data peserta untuk murid <strong>{deletingParticipant?.name}</strong> (Kelas {deletingParticipant?.className}).
+          </DialogDescription>
+        </DialogHeader>
+
+        {deletingParticipant && (
+          <div className="space-y-3.5 my-2 text-xs">
+            <div className="space-y-2">
+              <label
+                onClick={() => setDeleteMode("exam_only")}
+                className={cn(
+                  "p-3.5 rounded-xl border-2 cursor-pointer flex items-start gap-3 transition-all",
+                  deleteMode === "exam_only"
+                    ? "border-[#7AB82A] bg-[#F4FBEB] ring-2 ring-[#D5EFA9]"
+                    : "border-slate-200 hover:bg-slate-50"
+                )}
+              >
+                <input
+                  type="radio"
+                  name="deleteMode"
+                  checked={deleteMode === "exam_only"}
+                  onChange={() => setDeleteMode("exam_only")}
+                  className="mt-0.5 text-[#7AB82A] focus:ring-[#7AB82A]"
+                />
+                <div className="space-y-0.5">
+                  <div className="font-black text-slate-900 flex items-center gap-2">
+                    <span>Hapus dari Ujian Ini Saja</span>
+                    <Badge variant="outline" className="text-[10px] text-emerald-800 bg-emerald-50 border-emerald-300">
+                      Direkomendasikan
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Menghapus seluruh jawaban, riwayat percobaan, dan nilai murid dari ujian ini. Akun murid tetap tersimpan di database sekolah.
+                  </p>
+                </div>
+              </label>
+
+              <label
+                onClick={() => setDeleteMode("permanent")}
+                className={cn(
+                  "p-3.5 rounded-xl border-2 cursor-pointer flex items-start gap-3 transition-all",
+                  deleteMode === "permanent"
+                    ? "border-rose-500 bg-rose-50/50 ring-2 ring-rose-200"
+                    : "border-slate-200 hover:bg-slate-50"
+                )}
+              >
+                <input
+                  type="radio"
+                  name="deleteMode"
+                  checked={deleteMode === "permanent"}
+                  onChange={() => setDeleteMode("permanent")}
+                  className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                />
+                <div className="space-y-0.5">
+                  <div className="font-black text-rose-900">
+                    Hapus Akun Murid Permanen dari Sekolah
+                  </div>
+                  <p className="text-[11px] text-rose-700">
+                    Menghapus data murid ini secara permanen dari sistem sekolah. Gunakan opsi ini jika nama ini adalah akun percobaan / typo (contoh: nama asal-asalan).
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {deleteMode === "permanent" && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px] space-y-1">
+                <strong>⚠️ Peringatan:</strong> Tindakan ini tidak dapat dibatalkan. Seluruh data murid dan riwayat ujian murid ini akan terhapus permanen dari sistem.
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="border-t border-slate-100 pt-3">
+          <Button variant="outline" onClick={() => setDeletingParticipant(null)} className="text-xs font-bold">
+            Batal
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDeleteParticipant}
+            isLoading={isDeletingParticipant}
+            className="text-xs font-black shadow-xs bg-rose-600 hover:bg-rose-700"
+          >
+            {deleteMode === "permanent" ? "Hapus Akun Permanen" : "Hapus dari Ujian"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* 🔄 MODAL: RESET PERCOBAAN UJIAN */}
+      <Dialog open={Boolean(resettingParticipant)} onOpenChange={() => setResettingParticipant(null)}>
+        <DialogHeader>
+          <div className="flex items-center gap-2 text-amber-600 mb-1">
+            <RotateCcw className="h-5 w-5" />
+            <span className="text-xs font-black uppercase tracking-wider">Reset Pengerjaan Siswa</span>
+          </div>
+          <DialogTitle className="text-lg font-black text-slate-900">
+            Reset Ujian: {resettingParticipant?.name}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">
+            Mereset kuota percobaan murid agar dapat mengerjakan kembali ujian ini dari awal.
+          </DialogDescription>
+        </DialogHeader>
+
+        {resettingParticipant && (
+          <div className="space-y-3.5 my-2 text-xs">
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl space-y-1">
+              <span className="font-bold text-amber-950 block">Status Saat Ini:</span>
+              <p className="text-amber-900 text-[11px]">
+                Siswa telah mengerjakan sebanyak <strong>{resettingParticipant.totalAttempts}x</strong> percobaan dengan nilai akhir <strong>{resettingParticipant.effectiveScore ?? resettingParticipant.finalScore ?? 0}</strong>.
+              </p>
+            </div>
+
+            <div>
+              <label className="block font-black text-slate-700 uppercase tracking-wider text-[11px] mb-1">
+                Alasan Reset Pengerjaan:
+              </label>
+              <Input
+                value={resetReason}
+                onChange={(e) => setResetReason(e.target.value)}
+                placeholder="Contoh: Kendala perangkat / izin ujian ulang dari guru"
+                className="h-10 text-xs rounded-xl"
+              />
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="border-t border-slate-100 pt-3">
+          <Button variant="outline" onClick={() => setResettingParticipant(null)} className="text-xs font-bold">
+            Batal
+          </Button>
+          <Button
+            onClick={handleResetAttempt}
+            isLoading={isResettingAttempt}
+            className="text-xs font-black bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
+          >
+            Reset Pengerjaan Sekarang
           </Button>
         </DialogFooter>
       </Dialog>
