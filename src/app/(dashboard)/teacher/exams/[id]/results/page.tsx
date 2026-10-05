@@ -110,6 +110,71 @@ export default function ExamResultsPage() {
   const [resetReason, setResetReason] = useState("Ujian ulang atas persetujuan guru pengampu");
   const [isResettingAttempt, setIsResettingAttempt] = useState(false);
 
+  // Individual Student Result Download / View Modal State
+  const [selectedStudentForDownload, setSelectedStudentForDownload] = useState<any>(null);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+
+  const openDownloadModal = (participant: any) => {
+    setSelectedStudentForDownload(participant);
+    setShowDownloadModal(true);
+  };
+
+  const handleDownloadTextReport = (participant: any) => {
+    if (!participant || !data?.exam) return;
+    const currentExam = data.exam;
+    const att = participant.selectedAttempt || participant.attempts?.[0];
+    let text = `=======================================================\n`;
+    text += `         LEMBAR HASIL PENGERJAAN UJIAN SISWA\n`;
+    text += `          ${currentExam.school?.name || "WhiteBee School of Life"}\n`;
+    text += `=======================================================\n\n`;
+    text += `Nama Ujian     : ${currentExam.title}\n`;
+    text += `Mata Pelajaran : ${currentExam.subject?.name || "-"}\n`;
+    text += `Guru Pengampu  : ${currentExam.teacher?.name || "-"}\n`;
+    text += `Tanggal Ujian  : ${formatDate(currentExam.startDate || currentExam.createdAt)}\n\n`;
+    text += `--- DATA PESERTA ---\n`;
+    text += `Nama Siswa     : ${participant.name}\n`;
+    text += `NIS            : ${participant.nis || "-"}\n`;
+    text += `Kelas          : ${participant.className || "-"}\n`;
+    text += `Nilai Akhir    : ${participant.effectiveScore ?? participant.finalScore ?? 0} / 100\n`;
+    text += `Total Poin     : ${participant.earnedPoints ?? 0} dari ${participant.maxPoints ?? 100} poin\n`;
+    text += `Status         : ${(participant.effectiveScore ?? participant.finalScore ?? 0) >= passingScore ? "LULUS" : "REMEDIAL (Di bawah KKM " + passingScore + ")"}\n\n`;
+    text += `=======================================================\n`;
+    text += `                 RINCIAN JAWABAN SOAL\n`;
+    text += `=======================================================\n\n`;
+
+    (currentExam.questions || []).forEach((q: any, idx: number) => {
+      const ans = att?.answers?.find((a: any) => a.questionId === q.id);
+      const isEssay = q.type === "ESSAY";
+      text += `Soal #${idx + 1} [${q.type === "MULTIPLE_CHOICE" ? "Pilihan Ganda" : q.type === "TRUE_FALSE" ? "Benar/Salah" : "Esai"}] - Bobot: ${q.points} pt\n`;
+      text += `Pertanyaan : ${q.questionText}\n`;
+      if (isEssay) {
+        text += `Jawaban Siswa   : ${ans?.answerText || "(Tidak dijawab)"}\n`;
+        text += `Nilai Diberikan : ${ans?.awardedPoints ?? "Belum dinilai"} / ${q.points} pt\n`;
+        if (ans?.feedback) text += `Catatan Guru    : ${ans.feedback}\n`;
+      } else {
+        const correctOpt = q.options?.find((o: any) => o.isCorrect);
+        text += `Jawaban Siswa   : ${ans?.selectedOptionKey ? `${ans.selectedOptionKey}. ${ans.selectedOptionText || ""}` : "(Tidak dijawab)"} [${ans?.isCorrect ? "BENAR ✅" : "SALAH ❌"}]\n`;
+        text += `Kunci Jawaban   : ${correctOpt?.optionKey || "-"}. ${correctOpt?.optionText || ""}\n`;
+        text += `Poin Diperoleh  : ${ans?.isCorrect ? q.points : 0} / ${q.points} pt\n`;
+      }
+      text += `-------------------------------------------------------\n\n`;
+    });
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Hasil_Ujian_${participant.name.replace(/\s+/g, "_")}_${currentExam.title.replace(/\s+/g, "_")}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Laporan hasil pengerjaan ${participant.name} berhasil diunduh!`);
+  };
+
+  const handlePrintStudentReport = () => {
+    window.print();
+  };
+
+
   const fetchResults = async () => {
     try {
       const res = await fetch(`/api/v1/teacher/exams/${examId}/results?_t=${Date.now()}`);
@@ -927,8 +992,20 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                                 </div>
                               </div>
 
-                              {/* Action Buttons: Edit, Delete, Send */}
+                              {/* Action Buttons: Download, Edit, Delete, Send */}
                               <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDownloadModal(p);
+                                  }}
+                                  title={`Unduh / Lihat Lembar Hasil Pengerjaan ${p.name}`}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </button>
+
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -1114,6 +1191,18 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                     >
                       <Trash2 className="h-3.5 w-3.5 text-rose-600" />
                       <span>Hapus</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openDownloadModal(p)}
+                      className="text-xs font-bold gap-1.5 border-emerald-300 text-emerald-800 bg-emerald-50/60 hover:bg-emerald-100 rounded-xl cursor-pointer"
+                      title={`Unduh / Cetak Lembar Hasil Pengerjaan ${p.name}`}
+                    >
+                      <Download className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Unduh Hasil</span>
                     </Button>
 
                     <Button
@@ -2216,6 +2305,321 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
             Reset Pengerjaan Sekarang
           </Button>
         </DialogFooter>
+      </Dialog>
+
+      {/* 📥 MODAL: LEMBAR HASIL PENGERJAAN & DOWNLOAD PESERTA */}
+      <Dialog open={showDownloadModal} onOpenChange={setShowDownloadModal}>
+        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-4xl w-full shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto space-y-6">
+          {selectedStudentForDownload && (
+            <>
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-[#EBF7D9] border border-[#D5EFA9] text-[#4B7914] flex items-center justify-center font-black text-lg">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 leading-tight">
+                      Lembar Hasil Pengerjaan Peserta
+                    </h2>
+                    <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                      {selectedStudentForDownload.name} • Kelas {selectedStudentForDownload.className} • NIS: {selectedStudentForDownload.nis || "-"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Toolbar Buttons */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handlePrintStudentReport}
+                    className="h-9 px-3.5 rounded-xl bg-[#7AB82A] hover:bg-[#6AA421] text-white font-black text-xs shadow-md shadow-[#7AB82A]/30 flex items-center gap-1.5"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    <span>Cetak / Simpan PDF</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDownloadTextReport(selectedStudentForDownload)}
+                    className="h-9 px-3.5 rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5"
+                  >
+                    <Download className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Unduh TXT</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowDownloadModal(false);
+                      handleOpenSendModal(selectedStudentForDownload, "INDIVIDUAL");
+                    }}
+                    className="h-9 px-3.5 rounded-xl border-sky-300 text-sky-800 bg-sky-50 hover:bg-sky-100 font-bold text-xs flex items-center gap-1.5"
+                  >
+                    <Send className="h-3.5 w-3.5 text-[#0088cc]" />
+                    <span>Kirim ke Ortu</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Score Highlights Summary Card */}
+              {(() => {
+                const att = selectedStudentForDownload.selectedAttempt || selectedStudentForDownload.attempts?.[0];
+                const score = selectedStudentForDownload.effectiveScore ?? selectedStudentForDownload.finalScore ?? 0;
+                const isPassed = score >= passingScore;
+                const earnedPts = selectedStudentForDownload.earnedPoints ?? att?.earnedPoints ?? 0;
+                const maxPts = selectedStudentForDownload.maxPoints ?? att?.maxPoints ?? 100;
+
+                const correctCount = (att?.answers || []).filter((a: any) => a.isCorrect === true).length;
+                const totalQ = questions.length;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                          Nilai Akhir
+                        </span>
+                        <div className="text-3xl font-black text-[#4B7914]">
+                          {score}
+                          <span className="text-xs text-slate-400 font-medium"> / 100</span>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                          Poin Diperoleh
+                        </span>
+                        <div className="text-2xl font-black text-slate-800">
+                          {earnedPts}
+                          <span className="text-xs text-slate-400 font-medium"> / {maxPts} pt</span>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                          Jawaban Benar
+                        </span>
+                        <div className="text-2xl font-black text-slate-800">
+                          {correctCount}
+                          <span className="text-xs text-slate-400 font-medium"> / {totalQ} soal</span>
+                        </div>
+                      </div>
+
+                      <div className={cn(
+                        "p-4 rounded-2xl border",
+                        isPassed
+                          ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+                          : "bg-rose-50/80 border-rose-200 text-rose-900"
+                      )}>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider block mb-1 opacity-75">
+                          Status Kelulusan
+                        </span>
+                        <div className="text-lg font-black flex items-center gap-1.5">
+                          {isPassed ? (
+                            <>
+                              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                              <span>LULUS</span>
+                            </>
+                          ) : (
+                            <>
+                              <X className="h-5 w-5 text-rose-600" />
+                              <span>REMEDIAL</span>
+                            </>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-medium opacity-80 block mt-0.5">
+                          (KKM: {passingScore})
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Questions & Answers Detail List */}
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                          <BookOpen className="h-4 w-4 text-[#7AB82A]" />
+                          <span>Rincian Lembar Jawaban ({totalQ} Soal)</span>
+                        </h3>
+                        <span className="text-xs text-slate-500 font-semibold">
+                          Percobaan #{att?.attemptNumber || 1}
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {questions.map((q: any, idx: number) => {
+                          const ans = att?.answers?.find((a: any) => a.questionId === q.id);
+                          const isEssay = q.type === "ESSAY";
+                          const isCorrect = ans?.isCorrect === true;
+                          const isIncorrect = ans?.isCorrect === false;
+                          const isPendingEssay = isEssay && (ans?.awardedPoints === null || ans?.awardedPoints === undefined);
+
+                          return (
+                            <div
+                              key={q.id}
+                              className={cn(
+                                "p-4 rounded-2xl border transition-all space-y-3",
+                                isCorrect && "bg-[#F7FCF4] border-[#D5EFA9]",
+                                isIncorrect && "bg-[#FFF8F8] border-rose-200",
+                                isPendingEssay && "bg-amber-50/50 border-amber-200",
+                                !ans && "bg-slate-50 border-slate-200"
+                              )}
+                            >
+                              {/* Question Item Header */}
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="h-6 w-6 rounded-lg bg-slate-900 text-white font-black text-xs flex items-center justify-center">
+                                    {idx + 1}
+                                  </span>
+                                  <Badge variant="outline" className="text-[10px] font-bold">
+                                    {q.type === "MULTIPLE_CHOICE"
+                                      ? "Pilihan Ganda"
+                                      : q.type === "TRUE_FALSE"
+                                      ? "Benar / Salah"
+                                      : "Esai"}
+                                  </Badge>
+                                  <span className="text-xs font-bold text-slate-500">
+                                    Bobot: {q.points} pt
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 font-black text-xs">
+                                  {isCorrect ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800">
+                                      <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                      <span>Benar (+{q.points} pt)</span>
+                                    </span>
+                                  ) : isIncorrect ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-100 text-rose-800">
+                                      <X className="h-3.5 w-3.5 stroke-[3]" />
+                                      <span>Salah (0 pt)</span>
+                                    </span>
+                                  ) : isPendingEssay ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-100 text-amber-800">
+                                      <Clock className="h-3.5 w-3.5" />
+                                      <span>Menunggu Koreksi Guru</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400">Tidak Dijawab</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Question Text & Image */}
+                              <div className="space-y-2">
+                                <p className="text-sm font-bold text-slate-900 leading-relaxed">
+                                  {q.questionText}
+                                </p>
+                                {q.questionImage && (
+                                  <div className="rounded-xl overflow-hidden border border-slate-200 max-w-sm">
+                                    <img
+                                      src={q.questionImage}
+                                      alt={`Gambar Soal #${idx + 1}`}
+                                      className="w-full h-auto object-contain max-h-48"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Student's Answer and Options Breakdown */}
+                              {isEssay ? (
+                                <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
+                                    Jawaban Tertulis Siswa:
+                                  </span>
+                                  <p className="text-xs text-slate-800 font-medium whitespace-pre-wrap italic">
+                                    &ldquo;{ans?.answerText || "(Siswa tidak mengisi jawaban)"}&rdquo;
+                                  </p>
+                                  {ans?.awardedPoints !== null && ans?.awardedPoints !== undefined && (
+                                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                                      <span className="font-bold text-slate-700">
+                                        Poin Diberikan: <strong>{ans.awardedPoints} / {q.points} pt</strong>
+                                      </span>
+                                      {ans.feedback && (
+                                        <span className="text-slate-600 italic">
+                                          Catatan: &ldquo;{ans.feedback}&rdquo;
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="space-y-1.5 pt-1">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {q.options?.map((opt: any) => {
+                                      const isChosen = ans?.selectedOptionId === opt.id || ans?.selectedOptionKey === opt.optionKey;
+                                      const isKey = opt.isCorrect;
+
+                                      return (
+                                        <div
+                                          key={opt.id}
+                                          className={cn(
+                                            "p-2.5 rounded-xl border text-xs flex items-center justify-between transition-all",
+                                            isKey && "bg-emerald-50/70 border-emerald-300 font-bold text-emerald-950",
+                                            isChosen && !isKey && "bg-rose-50/70 border-rose-300 text-rose-950 line-through",
+                                            !isChosen && !isKey && "bg-white border-slate-200 text-slate-600 opacity-75"
+                                          )}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-black">{opt.optionKey}.</span>
+                                            <span>{opt.optionText}</span>
+                                          </div>
+                                          <div className="flex items-center gap-1 font-bold text-[10px]">
+                                            {isChosen && isKey && (
+                                              <span className="px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900">
+                                                Jawaban Siswa (Kunci ✅)
+                                              </span>
+                                            )}
+                                            {isChosen && !isKey && (
+                                              <span className="px-1.5 py-0.5 rounded bg-rose-200 text-rose-900">
+                                                Dipilih Siswa ❌
+                                              </span>
+                                            )}
+                                            {!isChosen && isKey && (
+                                              <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                                                Kunci Jawaban
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <DialogFooter className="border-t border-slate-100 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDownloadModal(false)}
+                  className="text-xs font-bold"
+                >
+                  Tutup
+                </Button>
+                <Button
+                  onClick={handlePrintStudentReport}
+                  className="text-xs font-black bg-[#7AB82A] hover:bg-[#6AA421] text-white shadow-md shadow-[#7AB82A]/30 flex items-center gap-1.5"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Cetak / Unduh Lembar Hasil</span>
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </div>
       </Dialog>
     </div>
   );
