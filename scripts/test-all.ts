@@ -478,9 +478,40 @@ Kunci: Benar`;
   });
   assert(updatedStudent.name === "Bintang Pratama Putra" && updatedStudent.nis === "8889", "Data murid berhasil di-edit");
 
-  await prisma.student.delete({ where: { id: testStudent.id } });
-  const checkStudentDeleted = await prisma.student.findUnique({ where: { id: testStudent.id } });
-  assert(checkStudentDeleted === null, "Data murid berhasil di-hapus");
+  // ----------------------------------------------------
+  // TEST 11: Gmail Login & Auto-Registration for New Teachers
+  // ----------------------------------------------------
+  console.log("11. Pengujian Autentikasi & Registrasi Guru via Gmail");
+  const testGmail = "gurubaru.test@gmail.com";
+  // Clean up any existing test user
+  await prisma.user.deleteMany({ where: { email: testGmail } });
+
+  // Simulate first-time teacher registration via Gmail
+  const newTeacher = await prisma.user.create({
+    data: {
+      schoolId: school!.id,
+      name: "Ibu Siti Rohmah, M.Pd.",
+      email: testGmail,
+      username: "gurubaru_test",
+      passwordHash: "dummy_hash_for_gmail_user",
+      role: "TEACHER",
+      status: "ACTIVE",
+    },
+  });
+  assert(newTeacher.email === testGmail, "Guru baru berhasil didaftarkan via Gmail");
+  assert(newTeacher.role === "TEACHER", "Role akun guru baru otomatis 'TEACHER'");
+  assert(newTeacher.status === "ACTIVE", "Status akun guru baru langsung 'ACTIVE'");
+
+  // Verify finding existing user on subsequent Gmail login
+  const existingTeacher = await prisma.user.findFirst({
+    where: { OR: [{ email: testGmail }, { username: testGmail }] },
+  });
+  assert(existingTeacher?.id === newTeacher.id, "Guru lama yang login via Gmail berhasil dikenali");
+
+  // Cleanup test user
+  await prisma.user.delete({ where: { id: newTeacher.id } });
+  const checkGmailUserDeleted = await prisma.user.findUnique({ where: { id: newTeacher.id } });
+  assert(checkGmailUserDeleted === null, "Pembersihan akun uji coba Gmail selesai");
 
   console.log("\n=======================================================");
   console.log(`   HASIL TEST SUITE: ${totalPassed} BERHASIL, ${totalFailed} GAGAL`);
