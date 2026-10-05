@@ -10,8 +10,11 @@ export async function GET(req: NextRequest) {
 
     const clientId =
       process.env.GOOGLE_CLIENT_ID ||
-      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-      "458518242237-tetrpq38q09i26muv0nourpqjojqs3ja.apps.googleusercontent.com";
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+    if (!clientId || clientId.startsWith("YOUR_")) {
+      return NextResponse.redirect(new URL("/login?error=google_client_not_configured", origin));
+    }
 
     // Google OAuth 2.0 Authorization Endpoint with prompt=select_account for account chooser
     const googleAuthUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");

@@ -30,6 +30,9 @@ function LoginForm() {
     const error = searchParams.get("error");
     if (error === "google_cancelled") {
       toast.info("Proses autentikasi Google dibatalkan.");
+    } else if (error === "google_client_not_configured") {
+      toast.info("Google OAuth Client ID belum dikonfigurasi. Masukkan Gmail Anda langsung di bawah ini.");
+      setIsGmailModalOpen(true);
     } else if (error === "account_inactive") {
       toast.error("Akun guru Anda telah dinonaktifkan oleh administrator sekolah.");
     } else if (error === "google_email_not_found") {

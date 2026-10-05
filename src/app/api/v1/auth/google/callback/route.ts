@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const clientId =
     process.env.GOOGLE_CLIENT_ID ||
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-    "458518242237-tetrpq38q09i26muv0nourpqjojqs3ja.apps.googleusercontent.com";
+    "";
   
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
 
