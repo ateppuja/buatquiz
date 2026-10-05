@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,11 @@ import { LogIn, ArrowLeft, Mail, Sparkles, UserCheck, ShieldCheck, CheckCircle2 
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+function LoginForm() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isOAuthRedirecting, setIsOAuthRedirecting] = useState(false);
 
   // Gmail Login Modal for new and existing teachers
   const [isGmailModalOpen, setIsGmailModalOpen] = useState(false);
@@ -22,6 +23,28 @@ export default function LoginPage() {
   const [isGmailLoading, setIsGmailLoading] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Check URL errors (e.g. from Google OAuth redirect)
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error === "google_cancelled") {
+      toast.info("Proses autentikasi Google dibatalkan.");
+    } else if (error === "account_inactive") {
+      toast.error("Akun guru Anda telah dinonaktifkan oleh administrator sekolah.");
+    } else if (error === "google_email_not_found") {
+      toast.error("Tidak dapat menemukan alamat email dari akun Google.");
+    } else if (error === "google_server_error" || error === "oauth_init_failed") {
+      toast.error("Gagal menghubungkan ke server Google OAuth. Silakan coba lagi.");
+    }
+  }, [searchParams]);
+
+  // Handle Google OAuth Direct Redirect
+  const handleGoogleOAuthLogin = () => {
+    setIsOAuthRedirecting(true);
+    // Direct redirect to Google OAuth initiation endpoint
+    window.location.href = "/api/v1/auth/google/oauth";
+  };
 
   // Handle standard username/password login
   const handleLogin = async (e: React.FormEvent) => {
@@ -60,7 +83,7 @@ export default function LoginPage() {
     }
   };
 
-  // Handle Gmail Instant Login & Auto Registration
+  // Handle Gmail Instant Login & Auto Registration fallback
   const handleGmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = gmailAddress.trim().toLowerCase();
@@ -164,7 +187,9 @@ export default function LoginPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsGmailModalOpen(true)}
+                onClick={handleGoogleOAuthLogin}
+                disabled={isOAuthRedirecting}
+                isLoading={isOAuthRedirecting}
                 className="w-full h-12 rounded-xl border-2 border-slate-200 hover:border-[#7AB82A] bg-white hover:bg-slate-50 text-slate-800 font-black shadow-sm flex items-center justify-center gap-3 transition-all active:scale-[0.99]"
               >
                 {/* Google Multi-Color SVG Icon */}
@@ -186,8 +211,20 @@ export default function LoginPage() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span className="text-sm">Masuk / Daftar dengan Gmail</span>
+                <span className="text-sm">
+                  {isOAuthRedirecting ? "Membuka Akun Google..." : "Masuk dengan Google (OAuth)"}
+                </span>
               </Button>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsGmailModalOpen(true)}
+                  className="text-[11px] font-bold text-slate-500 hover:text-[#7AB82A] underline underline-offset-2 transition-colors"
+                >
+                  Atau masukkan alamat Gmail langsung
+                </button>
+              </div>
             </div>
 
             {/* Divider */}
@@ -343,4 +380,21 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#F6FCED]">
+          <div className="text-center font-bold text-slate-600 animate-pulse">
+            Memuat halaman login...
+          </div>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  );
+}
+
 
