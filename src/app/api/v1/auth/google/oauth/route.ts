@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
-    const origin = process.env.NEXT_PUBLIC_APP_URL || `${url.protocol}//${url.host}`;
+    const proto = req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
+    const origin = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
     const redirectUri = `${origin}/api/v1/auth/google/callback`;
 
     const clientId =

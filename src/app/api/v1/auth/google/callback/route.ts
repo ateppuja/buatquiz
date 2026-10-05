@@ -20,7 +20,9 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
-  const origin = process.env.NEXT_PUBLIC_APP_URL || `${url.protocol}//${url.host}`;
+  const proto = req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
+  const origin = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
   const redirectUri = `${origin}/api/v1/auth/google/callback`;
 
   if (error || !code) {
