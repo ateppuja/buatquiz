@@ -489,9 +489,9 @@ Jawaban: B`,
   };
 
   // --- Step 2 Question Helpers ---
-  const addQuestion = (type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY") => {
+  const addQuestion = (type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" = "MULTIPLE_CHOICE", insertAfterIndex?: number) => {
     const newQ: any = {
-      id: `temp-${Date.now()}`,
+      id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type,
       questionText: "",
       points: 1,
@@ -511,7 +511,16 @@ Jawaban: B`,
             ]
           : [],
     };
-    setQuestions([...questions, newQ]);
+
+    if (typeof insertAfterIndex === "number" && insertAfterIndex >= 0 && insertAfterIndex < questions.length) {
+      const nextQuestions = [...questions];
+      nextQuestions.splice(insertAfterIndex + 1, 0, newQ);
+      setQuestions(nextQuestions);
+      toast.success(`Soal baru berhasil disisipkan di bawah soal #${insertAfterIndex + 1}.`);
+    } else {
+      setQuestions([...questions, newQ]);
+      toast.success("Soal baru berhasil ditambahkan.");
+    }
   };
 
   const removeQuestion = (index: number) => {
@@ -1242,8 +1251,88 @@ Jawaban: B`,
                     className="text-xs"
                   />
                 </div>
+
+                {/* Per-Question Insertion Footer */}
+                <div className="flex flex-wrap items-center justify-between pt-2.5 border-t border-slate-100 dark:border-slate-800 gap-2">
+                  <span className="text-[11px] font-medium text-muted-foreground">Soal nomor #{qIdx + 1}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-muted-foreground mr-1 hidden sm:inline">Tambah soal di bawah ini:</span>
+                    <button
+                      type="button"
+                      onClick={() => addQuestion("MULTIPLE_CHOICE", qIdx)}
+                      className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-600 font-semibold text-[11px] transition-colors cursor-pointer"
+                      title="Sisipkan Pilihan Ganda tepat di bawah soal ini"
+                    >
+                      + PG
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addQuestion("TRUE_FALSE", qIdx)}
+                      className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-600 font-semibold text-[11px] transition-colors cursor-pointer"
+                      title="Sisipkan Benar/Salah tepat di bawah soal ini"
+                    >
+                      + Benar/Salah
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addQuestion("ESSAY", qIdx)}
+                      className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-600 font-semibold text-[11px] transition-colors cursor-pointer"
+                      title="Sisipkan Esai tepat di bawah soal ini"
+                    >
+                      + Esai
+                    </button>
+                  </div>
+                </div>
               </Card>
             ))}
+          </div>
+
+          {/* Button: + Tambahkan soal (Tepat di bawah seluruh soal) */}
+          <div className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-primary/60 dark:hover:border-primary/60 rounded-2xl p-4 shadow-xs transition-all">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => addQuestion("MULTIPLE_CHOICE")}
+                className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-100 hover:bg-primary/5 hover:text-primary transition-all cursor-pointer"
+              >
+                <Plus className="h-4 w-4 stroke-[2.5]" />
+                <span>Tambahkan soal</span>
+              </button>
+
+              <div className="flex flex-wrap items-center justify-center gap-1.5 shrink-0">
+                <span className="text-[11px] font-semibold text-muted-foreground mr-1">Tipe:</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addQuestion("MULTIPLE_CHOICE")}
+                  className="h-8 text-xs font-semibold gap-1 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Pilihan Ganda</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addQuestion("TRUE_FALSE")}
+                  className="h-8 text-xs font-semibold gap-1 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Benar / Salah</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addQuestion("ESSAY")}
+                  className="h-8 text-xs font-semibold gap-1 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Esai</span>
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center justify-between pt-4 border-t border-border">

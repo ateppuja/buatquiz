@@ -466,7 +466,7 @@ Jawaban: B`,
     }
   };
 
-  const handleAddQuestion = async (type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY") => {
+  const handleAddQuestion = async (type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" = "MULTIPLE_CHOICE", insertAfterIndex?: number) => {
     try {
       const defaultOptions =
         type === "MULTIPLE_CHOICE"
@@ -483,6 +483,11 @@ Jawaban: B`,
             ]
           : [];
 
+      let insertAfterOrderIndex: number | undefined = undefined;
+      if (typeof insertAfterIndex === "number" && questions[insertAfterIndex]) {
+        insertAfterOrderIndex = questions[insertAfterIndex].orderIndex;
+      }
+
       const res = await fetch(`/api/v1/teacher/exams/${examId}/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -491,12 +496,17 @@ Jawaban: B`,
           questionText: "Tuliskan pertanyaan baru di sini...",
           points: 1,
           options: defaultOptions,
+          insertAfterOrderIndex,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        toast.success("Soal baru berhasil ditambahkan.");
+        toast.success(
+          typeof insertAfterIndex === "number"
+            ? `Soal baru berhasil disisipkan setelah soal #${insertAfterIndex + 1}.`
+            : "Soal baru berhasil ditambahkan."
+        );
         loadExamDetail();
       }
     } catch {
@@ -937,8 +947,88 @@ Jawaban: B`,
                 </p>
               </div>
             )}
+
+            {/* Per-Question Insertion Footer */}
+            <div className="flex flex-wrap items-center justify-between pt-2.5 border-t border-slate-100 dark:border-slate-800 gap-2">
+              <span className="text-[11px] font-medium text-muted-foreground">Soal nomor #{idx + 1}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground mr-1 hidden sm:inline">Tambah soal di bawah ini:</span>
+                <button
+                  type="button"
+                  onClick={() => handleAddQuestion("MULTIPLE_CHOICE", idx)}
+                  className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-600 font-semibold text-[11px] transition-colors cursor-pointer"
+                  title="Sisipkan Pilihan Ganda tepat di bawah soal ini"
+                >
+                  + PG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddQuestion("TRUE_FALSE", idx)}
+                  className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-600 font-semibold text-[11px] transition-colors cursor-pointer"
+                  title="Sisipkan Benar/Salah tepat di bawah soal ini"
+                >
+                  + Benar/Salah
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddQuestion("ESSAY", idx)}
+                  className="px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-600 font-semibold text-[11px] transition-colors cursor-pointer"
+                  title="Sisipkan Esai tepat di bawah soal ini"
+                >
+                  + Esai
+                </button>
+              </div>
+            </div>
           </Card>
         ))}
+
+        {/* Button: + Tambahkan soal (Tepat di bawah seluruh soal) */}
+        <div className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-primary/60 dark:hover:border-primary/60 rounded-2xl p-4 shadow-xs transition-all">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => handleAddQuestion("MULTIPLE_CHOICE")}
+              className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-100 hover:bg-primary/5 hover:text-primary transition-all cursor-pointer"
+            >
+              <Plus className="h-4 w-4 stroke-[2.5]" />
+              <span>Tambahkan soal</span>
+            </button>
+
+            <div className="flex flex-wrap items-center justify-center gap-1.5 shrink-0">
+              <span className="text-[11px] font-semibold text-muted-foreground mr-1">Tipe:</span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleAddQuestion("MULTIPLE_CHOICE")}
+                className="h-8 text-xs font-semibold gap-1 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Pilihan Ganda</span>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleAddQuestion("TRUE_FALSE")}
+                className="h-8 text-xs font-semibold gap-1 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Benar / Salah</span>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleAddQuestion("ESSAY")}
+                className="h-8 text-xs font-semibold gap-1 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Esai</span>
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Floating Bottom Save Bar */}

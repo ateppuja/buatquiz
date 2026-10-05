@@ -14,7 +14,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const { id: examId } = params;
     const body = await req.json();
-    const { type, questionText, points, explanation, options, questionImage } = body;
+    const { type, questionText, points, explanation, options, questionImage, insertAfterOrderIndex } = body;
 
     if (!type || !questionText) {
       return NextResponse.json(
@@ -23,12 +23,22 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       );
     }
 
-    // Get current max orderIndex
-    const lastQuestion = await prisma.question.findFirst({
-      where: { examId },
-      orderBy: { orderIndex: "desc" },
-    });
-    const nextOrder = (lastQuestion?.orderIndex ?? -1) + 1;
+    let nextOrder = 0;
+    if (typeof insertAfterOrderIndex === "number" && insertAfterOrderIndex >= 0) {
+      // Shift all questions after this index to make room
+      await prisma.question.updateMany({
+        where: { examId, orderIndex: { gt: insertAfterOrderIndex } },
+        data: { orderIndex: { increment: 1 } },
+      });
+      nextOrder = insertAfterOrderIndex + 1;
+    } else {
+      // Get current max orderIndex
+      const lastQuestion = await prisma.question.findFirst({
+        where: { examId },
+        orderBy: { orderIndex: "desc" },
+      });
+      nextOrder = (lastQuestion?.orderIndex ?? -1) + 1;
+    }
 
     const question = await prisma.question.create({
       data: {
