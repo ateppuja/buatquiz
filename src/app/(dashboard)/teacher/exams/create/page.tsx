@@ -53,12 +53,13 @@ export default function CreateExamWizardPage() {
   const [endAt, setEndAt] = useState("");
 
   // Step 2: Soal Ujian
+  const [pointWeightMode, setPointWeightMode] = useState<"AUTO_100" | "CUSTOM">("AUTO_100");
   const [questions, setQuestions] = useState<any[]>([
     {
       id: "temp-1",
       type: "MULTIPLE_CHOICE",
       questionText: "",
-      points: 1,
+      points: 100,
       explanation: "",
       options: [
         { key: "A", text: "", isCorrect: false },
@@ -357,12 +358,24 @@ Jawaban: B`,
     if (!parsedTextResult?.questions) return;
     const nextQuestions = [...parsedTextResult.questions];
     if (nextQuestions[qIdx]) {
-      nextQuestions[qIdx].points = Math.max(0.5, newPoints || 1);
+      nextQuestions[qIdx].points = Math.max(0.1, newPoints || 0);
       setParsedTextResult({
         ...parsedTextResult,
         questions: nextQuestions,
       });
     }
+  };
+
+  const handleDistributePreviewPoints = () => {
+    if (!parsedTextResult?.questions || parsedTextResult.questions.length === 0) return;
+    const count = parsedTextResult.questions.length;
+    const perQ = Number((100 / count).toFixed(2));
+    const nextQuestions = parsedTextResult.questions.map((q: any) => ({ ...q, points: perQ }));
+    setParsedTextResult({
+      ...parsedTextResult,
+      questions: nextQuestions,
+    });
+    toast.success(`Bobot pratinjau diratakan: ${count} soal @ ${perQ} poin.`);
   };
 
   const handleDeletePreviewQuestion = (qIdx: number) => {
@@ -408,22 +421,30 @@ Jawaban: B`,
         options: q.options || [],
       }));
 
+    let targetQuestions: any[] = [];
     if (textImportMode === "REPLACE") {
-      setQuestions(converted);
+      targetQuestions = converted;
     } else {
-      setQuestions((prev) => {
-        // If current questions only contains 1 empty initial placeholder, replace it
-        if (
-          prev.length === 1 &&
-          !prev[0].questionText.trim() &&
-          (!prev[0].options || prev[0].options.every((o: any) => !o.text.trim()))
-        ) {
-          return converted;
-        }
-        return [...prev, ...converted];
-      });
+      if (
+        questions.length === 1 &&
+        !questions[0].questionText.trim() &&
+        (!questions[0].options || questions[0].options.every((o: any) => !o.text.trim()))
+      ) {
+        targetQuestions = converted;
+      } else {
+        targetQuestions = [...questions, ...converted];
+      }
     }
 
+    const hasExplicitPoints = converted.some((q: any) => q.points && q.points !== 1);
+    if (!hasExplicitPoints && pointWeightMode === "AUTO_100" && targetQuestions.length > 0) {
+      const perQ = Number((100 / targetQuestions.length).toFixed(2));
+      targetQuestions = targetQuestions.map((q) => ({ ...q, points: perQ }));
+    } else if (hasExplicitPoints) {
+      setPointWeightMode("CUSTOM");
+    }
+
+    setQuestions(targetQuestions);
     toast.success(`Berhasil memasukkan ${converted.length} butir soal ke lembar ujian!`);
     setShowTextImportModal(false);
     setRawQuestionText("");
@@ -489,12 +510,34 @@ Jawaban: B`,
   };
 
   // --- Step 2 Question Helpers ---
+  const handleDistributeEvenly100 = () => {
+    if (questions.length === 0) return;
+    const count = questions.length;
+    const perQ = Number((100 / count).toFixed(2));
+    const updated = questions.map((q) => ({ ...q, points: perQ }));
+    setQuestions(updated);
+    setPointWeightMode("AUTO_100");
+    toast.success(`Bobot berhasil diratakan: ${count} soal @ ${perQ} poin (Total 100 Poin).`);
+  };
+
+  const handleSetPointMode = (mode: "AUTO_100" | "CUSTOM") => {
+    setPointWeightMode(mode);
+    if (mode === "AUTO_100") {
+      handleDistributeEvenly100();
+    } else {
+      toast.info("Mode Kustom aktif: Anda bebas mengatur bobot poin per butir soal.");
+    }
+  };
+
   const addQuestion = (type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" = "MULTIPLE_CHOICE", insertAfterIndex?: number) => {
+    const newCount = questions.length + 1;
+    const initialPoints = pointWeightMode === "AUTO_100" ? Number((100 / newCount).toFixed(2)) : 1;
+
     const newQ: any = {
       id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type,
       questionText: "",
-      points: 1,
+      points: initialPoints,
       explanation: "",
       options:
         type === "MULTIPLE_CHOICE"
@@ -512,15 +555,24 @@ Jawaban: B`,
           : [],
     };
 
+    let nextQuestions = [...questions];
     if (typeof insertAfterIndex === "number" && insertAfterIndex >= 0 && insertAfterIndex < questions.length) {
-      const nextQuestions = [...questions];
       nextQuestions.splice(insertAfterIndex + 1, 0, newQ);
-      setQuestions(nextQuestions);
-      toast.success(`Soal baru berhasil disisipkan di bawah soal #${insertAfterIndex + 1}.`);
     } else {
-      setQuestions([...questions, newQ]);
-      toast.success("Soal baru berhasil ditambahkan.");
+      nextQuestions.push(newQ);
     }
+
+    if (pointWeightMode === "AUTO_100") {
+      const perQ = Number((100 / newCount).toFixed(2));
+      nextQuestions = nextQuestions.map((q) => ({ ...q, points: perQ }));
+    }
+
+    setQuestions(nextQuestions);
+    toast.success(
+      typeof insertAfterIndex === "number"
+        ? `Soal baru disisipkan di bawah soal #${insertAfterIndex + 1}${pointWeightMode === "AUTO_100" ? ` (Bobot disesuaikan @${Number((100 / newCount).toFixed(2))} poin)` : ""}.`
+        : `Soal baru berhasil ditambahkan${pointWeightMode === "AUTO_100" ? ` (Bobot disesuaikan @${Number((100 / newCount).toFixed(2))} poin)` : ""}.`
+    );
   };
 
   const removeQuestion = (index: number) => {
@@ -528,12 +580,22 @@ Jawaban: B`,
       toast.error("Ujian minimal harus memiliki 1 butir soal.");
       return;
     }
-    setQuestions(questions.filter((_, idx) => idx !== index));
+    const nextQuestions = questions.filter((_, idx) => idx !== index);
+    const newCount = nextQuestions.length;
+    if (pointWeightMode === "AUTO_100" && newCount > 0) {
+      const perQ = Number((100 / newCount).toFixed(2));
+      setQuestions(nextQuestions.map((q) => ({ ...q, points: perQ })));
+    } else {
+      setQuestions(nextQuestions);
+    }
   };
 
   const updateQuestionField = (index: number, field: string, val: any) => {
     const updated = [...questions];
     updated[index][field] = val;
+    if (field === "points") {
+      setPointWeightMode("CUSTOM");
+    }
     setQuestions(updated);
   };
 
@@ -737,7 +799,7 @@ Jawaban: B`,
     toast.success(`Kode ujian ${code} disalin ke clipboard!`);
   };
 
-  const totalExamPoints = questions.reduce((acc, q) => acc + (parseFloat(q.points) || 0), 0);
+  const totalExamPoints = Math.round(questions.reduce((acc, q) => acc + (parseFloat(q.points) || 0), 0) * 100) / 100;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
@@ -1048,13 +1110,13 @@ Jawaban: B`,
 
       {/* TAHAP 2: Memasukkan Soal (Manual & Import Word/Excel) */}
       {currentStep === 2 && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Top Actions: Add Question & Import Document Buttons */}
           <Card className="shadow-sm border-border p-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-foreground">
-                  Total Soal: {questions.length} Butir ({totalExamPoints} Poin)
+                  Total Soal: {questions.length} Butir
                 </span>
               </div>
 
@@ -1110,6 +1172,73 @@ Jawaban: B`,
             </div>
           </Card>
 
+          {/* Point Weight Toolbar */}
+          <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Mode Bobot Nilai:</span>
+              <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => handleSetPointMode("AUTO_100")}
+                  className={cn(
+                    "px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    pointWeightMode === "AUTO_100"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-foreground"
+                  )}
+                >
+                  ⚡ Otomatis (Total 100 Poin)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetPointMode("CUSTOM")}
+                  className={cn(
+                    "px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                    pointWeightMode === "CUSTOM"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-foreground"
+                  )}
+                >
+                  ✏️ Kustom / Manual
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
+                <span className="text-muted-foreground font-medium">Total Bobot:</span>
+                <span className={cn("font-black", Math.abs(totalExamPoints - 100) < 0.1 ? "text-emerald-600 font-bold" : "text-amber-600 font-bold")}>
+                  {totalExamPoints} Poin
+                </span>
+                {Math.abs(totalExamPoints - 100) < 0.1 ? (
+                  <Badge variant="success" className="text-[10px] py-0 px-1.5 ml-1">
+                    ✓ Pas 100
+                  </Badge>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleDistributeEvenly100}
+                    className="ml-1 text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    [⚡ Jadikan 100 Poin]
+                  </button>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleDistributeEvenly100}
+                className="h-8 text-xs font-bold gap-1.5 border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300"
+                title="Bagi rata seluruh poin butir soal agar bernilai tepat 100 poin"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Bagi Rata 100 Poin</span>
+              </Button>
+            </div>
+          </div>
+
           {/* Questions List */}
           <div className="space-y-5">
             {questions.map((q, qIdx) => (
@@ -1133,12 +1262,13 @@ Jawaban: B`,
                       <span className="text-muted-foreground font-medium">Bobot:</span>
                       <Input
                         type="number"
-                        min={1}
+                        min={0.1}
+                        step="any"
                         value={q.points}
                         onChange={(e) =>
-                          updateQuestionField(qIdx, "points", parseFloat(e.target.value) || 1)
+                          updateQuestionField(qIdx, "points", parseFloat(e.target.value) || 0)
                         }
-                        className="w-16 h-8 text-xs font-bold text-center"
+                        className="w-16 h-8 text-xs font-bold text-center bg-white dark:bg-slate-900"
                       />
                       <span className="text-muted-foreground">Poin</span>
                     </div>
@@ -2028,7 +2158,7 @@ Kunci: Benar
           {parsedTextResult && (
             <div className="space-y-3 pt-2 border-t border-border">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge
                     variant={parsedTextResult.validCount > 0 ? "default" : "destructive"}
                     className="text-xs font-bold bg-emerald-600 hover:bg-emerald-600 text-white"
@@ -2040,6 +2170,14 @@ Kunci: Benar
                     {parsedTextResult.questions.filter((q: any) => q.type === "TRUE_FALSE").length} BS,{" "}
                     {parsedTextResult.questions.filter((q: any) => q.type === "ESSAY").length} Esai)
                   </span>
+                  <button
+                    type="button"
+                    onClick={handleDistributePreviewPoints}
+                    className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 cursor-pointer"
+                    title="Bagi rata poin butir soal pratinjau agar total bernilai 100 poin"
+                  >
+                    ⚡ Bagi Rata 100 Poin
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-3 text-xs font-medium">
