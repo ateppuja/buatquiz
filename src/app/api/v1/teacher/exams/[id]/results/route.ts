@@ -17,6 +17,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const exam = await prisma.exam.findUnique({
       where: { id: examId },
       include: {
+        school: true,
+        teacher: true,
         subject: true,
         questions: {
           include: {
@@ -143,6 +145,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           title: exam.title,
           examCode: exam.examCode,
           subjectName: exam.subject.name,
+          schoolName: exam.school?.name || "Sekolah",
+          teacherName: exam.teacher?.name || session.name || "Guru",
           gradingMethod: exam.gradingMethod,
           resultVisibility: exam.resultVisibility,
           maxAttempts: exam.maxAttempts,

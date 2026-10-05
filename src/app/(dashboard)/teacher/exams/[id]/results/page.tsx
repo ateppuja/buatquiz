@@ -30,6 +30,10 @@ import {
   PowerOff,
   Share2,
   Mail,
+  Send,
+  Copy,
+  ExternalLink,
+  MessageCircle,
   Eye,
   TrendingUp,
   AlertTriangle,
@@ -75,6 +79,16 @@ export default function ExamResultsPage() {
 
   // Leaderboard Modal
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
+
+  // Send Results to Parents Modal State
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendTargetMode, setSendTargetMode] = useState<"INDIVIDUAL" | "CLASS_BROADCAST">("INDIVIDUAL");
+  const [selectedStudentForSend, setSelectedStudentForSend] = useState<any>(null);
+  const [parentEmail, setParentEmail] = useState("");
+  const [parentTelegram, setParentTelegram] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [customTeacherNote, setCustomTeacherNote] = useState("Alhamdulillah, teruslah bersemangat dalam menuntut ilmu dan tingkatkan prestasi belajarmu!");
+  const [passingScore, setPassingScore] = useState<number>(75);
 
   const fetchResults = async () => {
     try {
@@ -287,6 +301,154 @@ export default function ExamResultsPage() {
     return list;
   }, [participants]);
 
+  const handleOpenSendModal = (student?: any, mode?: "INDIVIDUAL" | "CLASS_BROADCAST") => {
+    if (student) {
+      setSelectedStudentForSend(student);
+      setSendTargetMode("INDIVIDUAL");
+    } else {
+      if (mode === "CLASS_BROADCAST") {
+        setSendTargetMode("CLASS_BROADCAST");
+      } else {
+        setSendTargetMode("INDIVIDUAL");
+        if (!selectedStudentForSend && processedParticipants.length > 0) {
+          setSelectedStudentForSend(processedParticipants[0]);
+        }
+      }
+    }
+    setShowSendModal(true);
+  };
+
+  const currentSendStudent = useMemo(() => {
+    if (!selectedStudentForSend) return processedParticipants[0] || null;
+    return processedParticipants.find((p: any) => p.studentId === selectedStudentForSend.studentId) || selectedStudentForSend;
+  }, [selectedStudentForSend, processedParticipants]);
+
+  const generateStudentReportText = (student: any) => {
+    if (!student || !exam) return "";
+    const score = student.effectiveScore ?? student.finalScore ?? 0;
+    const isPassed = score >= passingScore;
+    const statusEmoji = isPassed ? "✅" : "⚠️";
+    const statusText = isPassed ? "TUNTAS / MEMUASKAN" : "PERLU PENDAMPINGAN";
+    const dateStr = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    return `📋 *LAPORAN HASIL EVALUASI UJIAN SISWA*
+━━━━━━━━━━━━━━━━━━━━━━
+🏫 *Sekolah*: ${exam.schoolName || "Sekolah"}
+📚 *Mata Pelajaran*: ${exam.subjectName}
+📝 *Ujian*: ${exam.title}
+👨‍🏫 *Guru Pengampu*: ${exam.teacherName || "-"}
+📅 *Tanggal*: ${dateStr}
+
+👤 *Data Murid*:
+• *Nama*: ${student.name}
+• *Kelas*: Kelas ${student.className}
+• *NIS*: ${student.nis || "-"}
+
+🎯 *Hasil Penilaian*:
+• *Nilai Akhir*: *${score} / 100*
+• *Poin Diperoleh*: ${student.earnedPoints ?? 0} dari ${student.maxPoints ?? 100} Poin
+• *Jumlah Percobaan*: ${student.totalAttempts || 1}x
+• *Status Kelulusan*: ${statusEmoji} *${statusText}* (KKM: ${passingScore})
+
+💬 *Catatan Guru*:
+"${customTeacherNote || "Terima kasih atas kerja keras Ananda dalam pengerjaan ujian ini."}"
+
+━━━━━━━━━━━━━━━━━━━━━━
+_Laporan resmi dari Sistem Evaluasi Terpadu ${exam.schoolName || "Sekolah"}._`;
+  };
+
+  const generateClassBroadcastText = () => {
+    if (!exam || !processedParticipants.length) return "";
+    const sorted = [...processedParticipants].sort((a, b) => (b.effectiveScore ?? 0) - (a.effectiveScore ?? 0));
+    const dateStr = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const studentListText = sorted
+      .map((p, idx) => {
+        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}.`;
+        const score = p.effectiveScore ?? p.finalScore ?? 0;
+        const isPass = score >= passingScore;
+        return `${medal} ${p.name} (Kelas ${p.className}): *${score}* ${isPass ? "✅" : "⚠️"}`;
+      })
+      .join("\n");
+
+    return `📊 *REKAPITULASI HASIL UJIAN KELAS*
+━━━━━━━━━━━━━━━━━━━━━━
+🏫 *Sekolah*: ${exam.schoolName || "Sekolah"}
+📚 *Mata Pelajaran*: ${exam.subjectName}
+📝 *Ujian*: ${exam.title}
+👨‍🏫 *Guru Pengampu*: ${exam.teacherName || "-"}
+📅 *Tanggal*: ${dateStr}
+
+👥 *Total Peserta*: ${participants.length} Murid
+📈 *Rata-rata Nilai Kelas*: *${stats.averageScore || 0}*
+🏆 *Nilai Tertinggi*: *${stats.highestScore || 0}*
+📉 *Nilai Terendah*: *${stats.lowestScore || 0}*
+
+📋 *Daftar Nilai Siswa (Peringkat)*:
+${studentListText}
+
+━━━━━━━━━━━━━━━━━━━━━━
+_Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._`;
+  };
+
+  const handleSendTelegram = () => {
+    const text = sendTargetMode === "INDIVIDUAL" ? generateStudentReportText(currentSendStudent) : generateClassBroadcastText();
+    if (!text) return;
+
+    const cleanUser = parentTelegram.trim().replace(/^@/, "");
+    if (cleanUser) {
+      const url = `https://t.me/${cleanUser}`;
+      window.open(url, "_blank");
+      navigator.clipboard.writeText(text);
+      toast.success(`Membuka profil @${cleanUser} di Telegram. Teks laporan telah disalin untuk dikirimkan!`);
+    } else {
+      const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.origin)}&text=${encodeURIComponent(text)}`;
+      window.open(url, "_blank");
+      toast.success("Membuka Telegram untuk membagikan laporan...");
+    }
+  };
+
+  const handleSendEmail = () => {
+    if (sendTargetMode === "INDIVIDUAL" && !currentSendStudent) return;
+    const subject = sendTargetMode === "INDIVIDUAL"
+      ? `[Laporan Hasil Ujian] ${currentSendStudent.name} - ${exam.title} (${exam.subjectName})`
+      : `[Rekapitulasi Hasil Ujian] ${exam.title} - ${exam.subjectName}`;
+    const text = sendTargetMode === "INDIVIDUAL" ? generateStudentReportText(currentSendStudent) : generateClassBroadcastText();
+
+    const mailto = `mailto:${encodeURIComponent(parentEmail.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+    window.location.href = mailto;
+    toast.success("Membuka aplikasi email...");
+  };
+
+  const handleSendWhatsApp = () => {
+    const text = sendTargetMode === "INDIVIDUAL" ? generateStudentReportText(currentSendStudent) : generateClassBroadcastText();
+    if (!text) return;
+
+    let cleanPhone = parentPhone.replace(/[^0-9]/g, "");
+    if (cleanPhone.startsWith("0")) {
+      cleanPhone = "62" + cleanPhone.slice(1);
+    }
+    const url = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+    toast.success("Membuka WhatsApp untuk mengirim laporan...");
+  };
+
+  const handleCopyReport = () => {
+    const text = sendTargetMode === "INDIVIDUAL" ? generateStudentReportText(currentSendStudent) : generateClassBroadcastText();
+    if (!text) return;
+
+    navigator.clipboard.writeText(text);
+    toast.success("Format teks laporan berhasil disalin ke clipboard!");
+  };
+
   if (isLoading || !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
@@ -358,6 +520,17 @@ export default function ExamResultsPage() {
               Sunting Pengaturan
             </Button>
           </Link>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => handleOpenSendModal(null, "INDIVIDUAL")}
+            className="text-xs font-black gap-1.5 bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-sm border-0"
+            title="Kirim laporan hasil ujian ke Email atau Telegram Orang Tua"
+          >
+            <Send className="h-3.5 w-3.5" />
+            <span>Kirim Hasil ke Orang Tua</span>
+          </Button>
 
           <Button
             type="button"
@@ -536,15 +709,29 @@ export default function ExamResultsPage() {
               </div>
             </div>
 
-            {/* Search Input */}
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input
-                placeholder="Cari nama murid..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-8 text-xs rounded-xl bg-slate-50 border-slate-200"
-              />
+            {/* Search & Actions */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleOpenSendModal(null, "CLASS_BROADCAST")}
+                className="h-8 text-xs font-bold gap-1.5 border-sky-300 text-sky-800 bg-sky-50 hover:bg-sky-100 shrink-0"
+                title="Kirim atau bagikan rekap nilai 1 kelas ke Telegram / Email"
+              >
+                <Send className="h-3 w-3 text-[#0088cc]" />
+                <span>Broadcast Kelas</span>
+              </Button>
+
+              <div className="relative w-full sm:w-56">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  placeholder="Cari nama murid..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-8 text-xs rounded-xl bg-slate-50 border-slate-200"
+                />
+              </div>
             </div>
           </div>
 
@@ -605,11 +792,26 @@ export default function ExamResultsPage() {
                         <tr key={p.studentId} className="hover:bg-slate-50/80 transition-colors">
                           {/* Sticky Student Name & Class */}
                           <td className="p-3 sticky left-0 bg-white hover:bg-slate-50 z-10 border-r border-slate-200">
-                            <div className="font-bold text-slate-900 leading-snug">
-                              {p.name}
-                            </div>
-                            <div className="text-[10px] text-slate-500 font-semibold mt-0.5">
-                              Kelas {p.className} {p.nis ? `(${p.nis})` : ""}
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <div className="font-bold text-slate-900 leading-snug">
+                                  {p.name}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                                  Kelas {p.className} {p.nis ? `(${p.nis})` : ""}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenSendModal(p, "INDIVIDUAL");
+                                }}
+                                title={`Kirim laporan hasil ${p.name} ke Email / Telegram Orang Tua`}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-[#0088cc] hover:bg-sky-50 transition-colors shrink-0 cursor-pointer"
+                              >
+                                <Send className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </td>
 
@@ -680,7 +882,7 @@ export default function ExamResultsPage() {
       {/* 👥 TAB 2: DAFTAR PESERTA & RINCIAN PERCOBAAN */}
       {activeTab === "PARTICIPANTS" && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-3.5 rounded-2xl border border-slate-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-3.5 rounded-2xl border border-slate-200">
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <Input
@@ -691,8 +893,20 @@ export default function ExamResultsPage() {
               />
             </div>
 
-            <div className="text-xs font-bold text-slate-600">
-              Metode Nilai Akhir: <Badge variant="outline">{exam.gradingMethod}</Badge>
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleOpenSendModal(null, "CLASS_BROADCAST")}
+                className="h-9 text-xs font-black gap-1.5 bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-xs rounded-xl"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>Broadcast Rekap Kelas</span>
+              </Button>
+
+              <div className="text-xs font-bold text-slate-600">
+                Metode: <Badge variant="outline">{exam.gradingMethod}</Badge>
+              </div>
             </div>
           </div>
 
@@ -712,13 +926,25 @@ export default function ExamResultsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenSendModal(p, "INDIVIDUAL")}
+                      className="text-xs font-bold gap-1.5 border-sky-300 text-sky-800 bg-sky-50/60 hover:bg-sky-100 rounded-xl cursor-pointer"
+                      title={`Kirim laporan hasil ${p.name} ke Email / Telegram Orang Tua`}
+                    >
+                      <Send className="h-3.5 w-3.5 text-[#0088cc]" />
+                      <span>Kirim ke Orang Tua</span>
+                    </Button>
+
                     <div className="text-right">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                         Nilai Akhir
                       </span>
                       <span className="text-2xl font-black text-[#4B7914]">
-                        {p.finalScore !== null ? p.finalScore : 0}
+                        {p.effectiveScore ?? p.finalScore ?? 0}
                       </span>
                     </div>
 
@@ -1037,8 +1263,25 @@ export default function ExamResultsPage() {
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setSelectedCellDetail(null)}>
+        <DialogFooter className="flex flex-col-reverse sm:flex-row items-center justify-between gap-2 w-full pt-2">
+          {selectedCellDetail && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const student = selectedCellDetail.student;
+                setSelectedCellDetail(null);
+                handleOpenSendModal(student, "INDIVIDUAL");
+              }}
+              className="text-xs font-bold gap-1.5 border-sky-300 text-sky-800 bg-sky-50 hover:bg-sky-100 w-full sm:w-auto"
+            >
+              <Send className="h-3.5 w-3.5 text-[#0088cc]" />
+              <span>Kirim Hasil {selectedCellDetail.student?.name} ke Orang Tua</span>
+            </Button>
+          )}
+
+          <Button variant="outline" size="sm" onClick={() => setSelectedCellDetail(null)} className="w-full sm:w-auto">
             Tutup
           </Button>
         </DialogFooter>
@@ -1190,6 +1433,365 @@ export default function ExamResultsPage() {
           </Button>
           <Button onClick={handleSaveGrade} isLoading={isSavingGrade} className="font-bold bg-[#7AB82A] text-white">
             Simpan Nilai
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* 🚀 MODAL: KIRIM HASIL UJIAN KE EMAIL / TELEGRAM / WA ORANG TUA */}
+      <Dialog open={showSendModal} onOpenChange={setShowSendModal}>
+        <DialogHeader>
+          <div className="flex items-center gap-2 text-sky-600 mb-1">
+            <Send className="h-5 w-5" />
+            <span className="text-xs font-black uppercase tracking-wider">Komunikasi Orang Tua / Wali</span>
+          </div>
+          <DialogTitle className="text-lg font-black text-slate-900">
+            Kirim Hasil Ujian ke Email / Telegram Orang Tua
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">
+            Bagikan rincian nilai, pencapaian, dan apresiasi evaluasi siswa langsung ke <strong>Telegram</strong>, <strong>Email</strong>, atau <strong>WhatsApp</strong> orang tua.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 my-2 text-xs max-h-[75vh] overflow-y-auto pr-1">
+          {/* Mode Switcher: Individu vs Broadcast Kelas */}
+          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setSendTargetMode("INDIVIDUAL")}
+              className={cn(
+                "py-2 px-3 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer",
+                sendTargetMode === "INDIVIDUAL"
+                  ? "bg-white text-slate-900 shadow-xs ring-1 ring-slate-200"
+                  : "text-slate-600 hover:text-slate-900"
+              )}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Laporan Per Siswa</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSendTargetMode("CLASS_BROADCAST")}
+              className={cn(
+                "py-2 px-3 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer",
+                sendTargetMode === "CLASS_BROADCAST"
+                  ? "bg-white text-slate-900 shadow-xs ring-1 ring-slate-200"
+                  : "text-slate-600 hover:text-slate-900"
+              )}
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              <span>Rekapitulasi 1 Kelas</span>
+            </button>
+          </div>
+
+          {sendTargetMode === "INDIVIDUAL" ? (
+            <div className="space-y-4">
+              {/* Student Selector */}
+              <div className="space-y-1.5">
+                <label className="block font-black text-slate-700 uppercase tracking-wider text-[11px]">
+                  Pilih Siswa Target:
+                </label>
+                <select
+                  value={currentSendStudent?.studentId || ""}
+                  onChange={(e) => {
+                    const found = processedParticipants.find((p: any) => p.studentId === e.target.value);
+                    if (found) setSelectedStudentForSend(found);
+                  }}
+                  className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-[#7AB82A] cursor-pointer"
+                >
+                  {processedParticipants.map((p: any) => (
+                    <option key={p.studentId} value={p.studentId}>
+                      {p.name} — Kelas {p.className} (Nilai: {p.effectiveScore ?? p.finalScore ?? 0})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Student Result Highlight Card */}
+              {currentSendStudent && (
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#F4FBEB] to-[#E5F7C7] border-2 border-[#D5EFA9] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-black text-sm text-slate-900">{currentSendStudent.name}</h4>
+                      <p className="text-[11px] font-semibold text-slate-600">
+                        Kelas {currentSendStudent.className} • NIS: {currentSendStudent.nis || "-"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                        Nilai Akhir
+                      </span>
+                      <span className="text-2xl font-black text-[#4B7914]">
+                        {currentSendStudent.effectiveScore ?? currentSendStudent.finalScore ?? 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#D5EFA9]">
+                    <Badge className={cn(
+                      "text-[10px] font-black",
+                      (currentSendStudent.effectiveScore ?? 0) >= passingScore
+                        ? "bg-emerald-600 text-white"
+                        : "bg-rose-600 text-white"
+                    )}>
+                      {(currentSendStudent.effectiveScore ?? 0) >= passingScore ? "✓ TUNTAS / LULUS" : "⚠️ PERLU BIMBINGAN"}
+                    </Badge>
+                    <span className="text-[11px] text-slate-600 font-semibold">
+                      Poin: <strong>{currentSendStudent.earnedPoints ?? 0}/{currentSendStudent.maxPoints ?? 100}</strong>
+                    </span>
+                    <span className="text-[11px] text-slate-600 font-semibold">
+                      • Percobaan: <strong>{currentSendStudent.totalAttempts || 1}x</strong>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* KKM & Catatan Guru */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-black text-slate-700 uppercase tracking-wider text-[10px] mb-1">
+                    Batas KKM (Kelulusan):
+                  </label>
+                  <Input
+                    type="number"
+                    value={passingScore}
+                    onChange={(e) => setPassingScore(Number(e.target.value) || 0)}
+                    min={0}
+                    max={100}
+                    className="h-9 text-xs font-bold rounded-xl"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-black text-slate-700 uppercase tracking-wider text-[10px] mb-1">
+                    Pesan / Catatan Apresiasi Guru:
+                  </label>
+                  <Input
+                    value={customTeacherNote}
+                    onChange={(e) => setCustomTeacherNote(e.target.value)}
+                    placeholder="Tuliskan catatan apresiasi untuk murid dan orang tua..."
+                    className="h-9 text-xs rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* Kanal Pengiriman Langsung */}
+              <div className="space-y-2.5 pt-2 border-t border-slate-200">
+                <label className="block font-black text-slate-800 uppercase tracking-wider text-[11px]">
+                  Pilih Kanal Pengiriman:
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* ✈️ TELEGRAM CARD */}
+                  <div className="p-3.5 rounded-2xl border-2 border-sky-200 bg-sky-50/50 space-y-2.5 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-sky-700 font-black text-xs">
+                        <div className="h-6 w-6 rounded-full bg-[#0088cc] text-white flex items-center justify-center font-bold">
+                          <Send className="h-3.5 w-3.5" />
+                        </div>
+                        <span>Telegram Orang Tua / Siswa</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1 leading-normal">
+                        Kirim langsung ke aplikasi Telegram orang tua atau ke grup kelas.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-1">
+                      <Input
+                        placeholder="Username Telegram (contoh: @wali_murid)"
+                        value={parentTelegram}
+                        onChange={(e) => setParentTelegram(e.target.value)}
+                        className="h-8 text-xs bg-white rounded-xl border-sky-200"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleSendTelegram}
+                        className="w-full text-xs font-black gap-2 bg-[#0088cc] hover:bg-[#0077b5] text-white rounded-xl h-9 shadow-xs cursor-pointer"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        <span>Kirim ke Telegram</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* ✉️ EMAIL CARD */}
+                  <div className="p-3.5 rounded-2xl border-2 border-slate-200 bg-slate-50/60 space-y-2.5 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-slate-800 font-black text-xs">
+                        <div className="h-6 w-6 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold">
+                          <Mail className="h-3.5 w-3.5" />
+                        </div>
+                        <span>Email Orang Tua</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1 leading-normal">
+                        Buka aplikasi email (Gmail / Outlook) dengan format laporan siap kirim.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-1">
+                      <Input
+                        type="email"
+                        placeholder="Email orang tua (contoh: orangtua@gmail.com)"
+                        value={parentEmail}
+                        onChange={(e) => setParentEmail(e.target.value)}
+                        className="h-8 text-xs bg-white rounded-xl border-slate-300"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleSendEmail}
+                        className="w-full text-xs font-black gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-9 shadow-xs cursor-pointer"
+                      >
+                        <Mail className="h-3.5 w-3.5" />
+                        <span>Kirim via Email</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* WhatsApp & One-Click Copy */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="p-3 rounded-2xl border border-emerald-200 bg-emerald-50/40 flex items-center gap-2">
+                    <Input
+                      placeholder="No. WA Orang Tua (contoh: 08123456789)"
+                      value={parentPhone}
+                      onChange={(e) => setParentPhone(e.target.value)}
+                      className="h-8 text-xs bg-white rounded-xl border-emerald-200 flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleSendWhatsApp}
+                      className="text-xs font-black gap-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-xl h-8 px-3 shrink-0 cursor-pointer"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      <span>WhatsApp</span>
+                    </Button>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCopyReport}
+                    className="h-9 text-xs font-bold gap-2 border-slate-300 rounded-xl cursor-pointer"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Salin Format Pesan Teks</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <label className="font-black text-slate-700 uppercase tracking-wider text-[10px]">
+                    Pratinjau Pesan yang Akan Diterima Orang Tua:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleCopyReport}
+                    className="text-[10px] font-bold text-sky-600 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Copy className="h-3 w-3" />
+                    <span>Salin Teks</span>
+                  </button>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900 text-slate-100 font-mono text-[11px] whitespace-pre-line leading-relaxed overflow-x-auto max-h-44 select-all border border-slate-800">
+                  {generateStudentReportText(currentSendStudent)}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* CLASS BROADCAST MODE */
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-sky-50 border-2 border-sky-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-black text-sm text-sky-950">Rekapitulasi Nilai Seluruh Kelas</h4>
+                  <Badge className="bg-sky-600 text-white text-xs">{participants.length} Siswa</Badge>
+                </div>
+                <p className="text-xs text-sky-800 font-medium leading-relaxed">
+                  Bagikan daftar peringkat dan rekapitulasi nilai seluruh peserta ujian ke grup Telegram Kelas atau Email Wali Kelas/Wali Murid.
+                </p>
+                <div className="grid grid-cols-3 gap-2 pt-1 border-t border-sky-200 text-center text-xs font-bold">
+                  <div>
+                    <span className="text-[10px] text-sky-700 block uppercase">Rata-Rata</span>
+                    <span className="text-base font-black text-sky-950">{stats.averageScore || 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-emerald-700 block uppercase">Tertinggi</span>
+                    <span className="text-base font-black text-emerald-800">{stats.highestScore || 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-rose-700 block uppercase">Terendah</span>
+                    <span className="text-base font-black text-rose-800">{stats.lowestScore || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons for Broadcast */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  type="button"
+                  onClick={handleSendTelegram}
+                  className="w-full text-xs font-black gap-2 bg-[#0088cc] hover:bg-[#0077b5] text-white rounded-xl h-10 shadow-xs cursor-pointer"
+                >
+                  <Send className="h-4 w-4" />
+                  <span>Bagikan Rekap ke Grup Telegram</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleSendEmail}
+                  className="w-full text-xs font-black gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-10 shadow-xs cursor-pointer"
+                >
+                  <Mail className="h-4 w-4" />
+                  <span>Kirim Rekap via Email</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleSendWhatsApp}
+                  className="w-full text-xs font-black gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-xl h-10 shadow-xs cursor-pointer"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Bagikan ke Grup WhatsApp</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCopyReport}
+                  className="w-full text-xs font-bold gap-2 border-slate-300 rounded-xl h-10 cursor-pointer"
+                >
+                  <Copy className="h-4 w-4" />
+                  <span>Salin Teks Rekap Kelas</span>
+                </Button>
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <label className="font-black text-slate-700 uppercase tracking-wider text-[10px]">
+                    Pratinjau Pesan Rekapitulasi Kelas:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleCopyReport}
+                    className="text-[10px] font-bold text-sky-600 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Copy className="h-3 w-3" />
+                    <span>Salin Teks</span>
+                  </button>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900 text-slate-100 font-mono text-[11px] whitespace-pre-line leading-relaxed overflow-x-auto max-h-48 select-all border border-slate-800">
+                  {generateClassBroadcastText()}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t border-slate-100 pt-3">
+          <Button variant="outline" onClick={() => setShowSendModal(false)} className="text-xs font-bold">
+            Tutup
           </Button>
         </DialogFooter>
       </Dialog>
