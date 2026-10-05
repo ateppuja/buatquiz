@@ -53,6 +53,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             examId,
             type: q.type,
             questionText: q.questionText,
+            questionImage: q.questionImage || null,
             points: parseFloat(q.points || "1"),
             explanation: q.explanation || null,
             orderIndex: currentOrder++,

@@ -24,8 +24,10 @@ import {
   CopyPlus,
   Printer,
   FileText,
+  Image as ImageIcon,
+  Upload,
 } from "lucide-react";
-import { formatDateTimeLocal, parseDateInput, cn } from "@/lib/utils";
+import { formatDateTimeLocal, parseDateInput, cn, compressAndReadFileAsDataUrl } from "@/lib/utils";
 import { parseQuestionsFromRawText, beautifyQuestionText } from "@/lib/text-parser";
 import { toast } from "sonner";
 
@@ -475,6 +477,7 @@ Jawaban: B`,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               questionText: q.questionText,
+              questionImage: q.questionImage || null,
               points: parseFloat(q.points) || 1,
               options: q.options?.map((o: any, oIdx: number) => ({
                 key: o.key || o.optionKey || String.fromCharCode(65 + oIdx),
@@ -971,9 +974,35 @@ Jawaban: B`,
 
             {/* Question Text Prompt */}
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Teks Pertanyaan Soal
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-muted-foreground">
+                  Teks Pertanyaan Soal <span className="text-destructive">*</span>
+                </label>
+
+                {!q.questionImage && (
+                  <label className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 text-[11px] font-bold text-primary hover:text-primary/80 cursor-pointer transition-colors shadow-2xs">
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    <span>+ Tambah Gambar / Diagram</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const dataUrl = await compressAndReadFileAsDataUrl(file);
+                            updateQuestionField(idx, "questionImage", dataUrl);
+                            toast.success("Gambar berhasil disisipkan ke soal.");
+                          } catch {
+                            toast.error("Gagal memuat file gambar.");
+                          }
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
               <Textarea
                 value={q.questionText}
                 onChange={(e) => updateQuestionField(idx, "questionText", e.target.value)}
@@ -982,6 +1011,61 @@ Jawaban: B`,
                 className="text-xs font-medium leading-relaxed resize-y"
               />
             </div>
+
+            {/* Attached Question Image Preview */}
+            {q.questionImage && (
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <ImageIcon className="h-4 w-4 text-primary" />
+                    <span>Gambar / Ilustrasi Soal:</span>
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer transition-colors shadow-2xs flex items-center gap-1">
+                      <Upload className="h-3.5 w-3.5" />
+                      <span>Ganti Gambar</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const dataUrl = await compressAndReadFileAsDataUrl(file);
+                              updateQuestionField(idx, "questionImage", dataUrl);
+                              toast.success("Gambar soal berhasil diganti.");
+                            } catch {
+                              toast.error("Gagal memuat gambar.");
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        updateQuestionField(idx, "questionImage", null);
+                        toast.info("Gambar soal dihapus.");
+                      }}
+                      className="h-7 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 gap-1 px-2"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Hapus</span>
+                    </Button>
+                  </div>
+                </div>
+                <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-white dark:bg-slate-950 flex justify-center max-h-64 p-1.5">
+                  <img
+                    src={q.questionImage}
+                    alt={`Gambar Soal #${idx + 1}`}
+                    className="max-h-60 w-auto object-contain rounded-lg"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* MULTIPLE CHOICE: 4 Editable Options with Clickable Radio Key */}
             {q.type === "MULTIPLE_CHOICE" && (
@@ -1402,6 +1486,17 @@ Kunci: Benar
                     </div>
 
                     <p className="font-semibold text-foreground leading-relaxed">{q.questionText}</p>
+
+                    {q.questionImage && (
+                      <div className="my-2 max-w-sm rounded-lg overflow-hidden border border-border/80 bg-muted/20">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={q.questionImage}
+                          alt={`Gambar Soal #${qIdx + 1}`}
+                          className="max-h-48 w-auto object-contain rounded-md"
+                        />
+                      </div>
+                    )}
 
                     {/* Interactive Options list - Click to toggle correct key! */}
                     {q.type !== "ESSAY" && q.options && q.options.length > 0 && (

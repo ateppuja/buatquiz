@@ -255,6 +255,17 @@ export default function ExamResultPage() {
                     {q.questionText}
                   </p>
 
+                  {q.questionImage && (
+                    <div className="mb-4 max-w-md rounded-xl overflow-hidden border border-slate-200 shadow-xs bg-slate-50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={q.questionImage}
+                        alt="Gambar Soal"
+                        className="max-h-64 w-auto object-contain rounded-lg"
+                      />
+                    </div>
+                  )}
+
                   {/* Options Review for MCQ / TF */}
                   {!isEssay && (
                     <div className="space-y-2 mb-4">

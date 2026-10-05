@@ -99,6 +99,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             questionId: a.questionId,
             questionType: a.question.type,
             questionText: a.question.questionText,
+            questionImage: a.question.questionImage,
             points: a.question.points,
             selectedOptionId: a.selectedOptionId,
             selectedOptionKey: a.selectedOption?.optionKey || null,

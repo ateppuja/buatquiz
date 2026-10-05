@@ -64,6 +64,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             id: q.id,
             type: q.type,
             questionText: q.questionText,
+            questionImage: q.questionImage,
             points: q.points,
             explanation: q.explanation,
             options: q.options.map((o) => ({

@@ -959,9 +959,19 @@ export default function ExamResultsPage() {
 
         {selectedCellDetail && (
           <div className="space-y-4 my-2 text-xs">
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
               <span className="font-bold text-slate-500 uppercase text-[10px] block">Pertanyaan Soal:</span>
               <p className="text-sm font-semibold text-slate-900">{selectedCellDetail.question.questionText}</p>
+              {selectedCellDetail.question.questionImage && (
+                <div className="mt-2 max-w-sm rounded-lg overflow-hidden border border-slate-200 bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedCellDetail.question.questionImage}
+                    alt="Gambar Soal"
+                    className="max-h-48 w-auto object-contain rounded-md"
+                  />
+                </div>
+              )}
             </div>
 
             {selectedCellDetail.question.type === "ESSAY" ? (
@@ -1121,6 +1131,16 @@ export default function ExamResultsPage() {
                 Pertanyaan Soal (Bobot Maksimal: {gradingAnswer.points} Poin):
               </span>
               <p className="text-sm font-semibold text-slate-900">{gradingAnswer.questionText}</p>
+              {gradingAnswer.questionImage && (
+                <div className="mt-2 max-w-sm rounded-lg overflow-hidden border border-slate-200 bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={gradingAnswer.questionImage}
+                    alt="Gambar Soal"
+                    className="max-h-48 w-auto object-contain rounded-md"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="rounded-xl bg-blue-50/70 p-3.5 border border-blue-200">

@@ -357,12 +357,24 @@ export default function PrintExamPage() {
                       {/* Question Prompt */}
                       <div className="flex items-start gap-2">
                         <span className="font-bold shrink-0">{qNumber}.</span>
-                        <div className="flex-1">
+                        <div className="flex-1 space-y-2">
                           <p className="font-normal text-justify whitespace-pre-line leading-relaxed">
                             {q.questionText}
                           </p>
+
+                          {q.questionImage && (
+                            <div className="my-2 max-w-md">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={q.questionImage}
+                                alt={`Gambar Soal ${qNumber}`}
+                                className="max-h-60 max-w-full rounded border border-slate-300 object-contain print:border-black"
+                              />
+                            </div>
+                          )}
+
                           {showPoints && (
-                            <span className="text-[11px] font-bold text-slate-600 italic">
+                            <span className="text-[11px] font-bold text-slate-600 italic block">
                               [Skor: {q.points} Poin]
                             </span>
                           )}
@@ -428,28 +440,41 @@ export default function PrintExamPage() {
                     <div key={q.id} className="break-inside-avoid space-y-1.5 pt-1">
                       <div className="flex items-start gap-2">
                         <span className="font-bold shrink-0">{qNumber}.</span>
-                        <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <p className="font-normal text-justify flex-1">{q.questionText}</p>
-                          <div className="flex items-center gap-3 shrink-0 pl-2">
-                            {printMode === "STUDENT" ? (
-                              <div className="flex items-center gap-3 text-xs font-bold">
-                                <span>[&nbsp;&nbsp;&nbsp;&nbsp;] Benar</span>
-                                <span>[&nbsp;&nbsp;&nbsp;&nbsp;] Salah</span>
-                              </div>
-                            ) : (
-                              <div className="px-2 py-0.5 bg-emerald-100 border border-emerald-400 rounded text-xs font-black text-emerald-950 print:bg-slate-200 print:border-black">
-                                Kunci: {correctText}
-                              </div>
-                            )}
+                        <div className="flex-1 space-y-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <p className="font-normal text-justify flex-1">{q.questionText}</p>
+                            <div className="flex items-center gap-3 shrink-0 pl-2">
+                              {printMode === "STUDENT" ? (
+                                <div className="flex items-center gap-3 text-xs font-bold">
+                                  <span>[&nbsp;&nbsp;&nbsp;&nbsp;] Benar</span>
+                                  <span>[&nbsp;&nbsp;&nbsp;&nbsp;] Salah</span>
+                                </div>
+                              ) : (
+                                <div className="px-2 py-0.5 bg-emerald-100 border border-emerald-400 rounded text-xs font-black text-emerald-950 print:bg-slate-200 print:border-black">
+                                  Kunci: {correctText}
+                                </div>
+                              )}
+                            </div>
                           </div>
+
+                          {q.questionImage && (
+                            <div className="my-2 max-w-md">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={q.questionImage}
+                                alt={`Gambar Soal ${qNumber}`}
+                                className="max-h-60 max-w-full rounded border border-slate-300 object-contain print:border-black"
+                              />
+                            </div>
+                          )}
+
+                          {showPoints && (
+                            <div className="text-[11px] font-bold text-slate-600 italic">
+                              [Skor: {q.points} Poin]
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      {showPoints && (
-                        <div className="pl-6 text-[11px] font-bold text-slate-600 italic">
-                          [Skor: {q.points} Poin]
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -471,10 +496,22 @@ export default function PrintExamPage() {
                     <div key={q.id} className="break-inside-avoid space-y-2 pt-1">
                       <div className="flex items-start gap-2">
                         <span className="font-bold shrink-0">{qNumber}.</span>
-                        <div className="flex-1">
+                        <div className="flex-1 space-y-2">
                           <p className="font-normal text-justify leading-relaxed">{q.questionText}</p>
+
+                          {q.questionImage && (
+                            <div className="my-2 max-w-md">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={q.questionImage}
+                                alt={`Gambar Soal ${qNumber}`}
+                                className="max-h-60 max-w-full rounded border border-slate-300 object-contain print:border-black"
+                              />
+                            </div>
+                          )}
+
                           {showPoints && (
-                            <span className="text-[11px] font-bold text-slate-600 italic">
+                            <span className="text-[11px] font-bold text-slate-600 italic block">
                               [Skor Maksimal: {q.points} Poin]
                             </span>
                           )}
