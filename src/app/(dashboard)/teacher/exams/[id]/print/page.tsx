@@ -19,6 +19,10 @@ import {
   Calendar,
   Sparkles,
   BookOpen,
+  Columns,
+  Maximize2,
+  Minimize2,
+  SlidersHorizontal,
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 import { MathRenderer } from "@/components/ui/math-renderer";
@@ -35,12 +39,16 @@ export default function PrintExamPage() {
 
   // Print configuration options
   const [printMode, setPrintMode] = useState<"STUDENT" | "TEACHER_KEY">("STUDENT");
-  const [fontSize, setFontSize] = useState<"sm" | "base" | "lg">("base");
+  const [columns, setColumns] = useState<1 | 2>(2); // Default to 2 columns for paper saving
+  const [fontSize, setFontSize] = useState<"sm" | "base" | "lg">("sm"); // Default to small for compact exam paper
   const [showInstructions, setShowInstructions] = useState(true);
   const [showStudentIdentityBox, setShowStudentIdentityBox] = useState(true);
   const [showPoints, setShowPoints] = useState(true);
   const [showExplanations, setShowExplanations] = useState(true);
   const [showSignatures, setShowSignatures] = useState(true);
+  const [showColumnDivider, setShowColumnDivider] = useState(true);
+  const [pageOrientation, setPageOrientation] = useState<"portrait" | "landscape">("portrait");
+  const [pageMargin, setPageMargin] = useState<"compact" | "normal">("compact");
 
   useEffect(() => {
     const mode = searchParams.get("mode");
@@ -131,101 +139,187 @@ export default function PrintExamPage() {
         </div>
 
         {/* Print Configuration Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          {/* Left: Mode Switcher */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          {/* 1. Mode Naskah */}
           <div className="space-y-1.5">
             <label className="block font-black text-slate-700 uppercase tracking-wider text-[11px]">
-              Pilih Jenis Naskah Cetak:
+              Jenis Naskah Cetak:
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setPrintMode("STUDENT")}
                 className={cn(
-                  "flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer",
+                  "flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-black transition-all cursor-pointer",
                   printMode === "STUDENT"
-                    ? "bg-[#7AB82A] text-white border-[#7AB82A] shadow-sm ring-2 ring-[#D5EFA9]"
+                    ? "bg-[#7AB82A] text-white border-[#7AB82A] shadow-xs ring-2 ring-[#D5EFA9]"
                     : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
                 )}
               >
-                <FileText className="h-4 w-4" />
-                <span>Lembar Soal Siswa</span>
+                <FileText className="h-3.5 w-3.5" />
+                <span>Soal Siswa</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setPrintMode("TEACHER_KEY")}
                 className={cn(
-                  "flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer",
+                  "flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-black transition-all cursor-pointer",
                   printMode === "TEACHER_KEY"
-                    ? "bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-200"
+                    ? "bg-amber-600 text-white border-amber-600 shadow-xs ring-2 ring-amber-200"
                     : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
                 )}
               >
-                <KeyRound className="h-4 w-4" />
-                <span>Kunci & Pembahasan Guru</span>
+                <KeyRound className="h-3.5 w-3.5" />
+                <span>Kunci Guru</span>
               </button>
             </div>
           </div>
 
-          {/* Right: Layout & Font Options */}
+          {/* 2. Format Kolom (1 Kolom vs 2 Kolom Hemat Kertas) */}
+          <div className="space-y-1.5">
+            <label className="block font-black text-slate-700 uppercase tracking-wider text-[11px] flex items-center justify-between">
+              <span>Format Kolom Naskah:</span>
+              <span className="text-[#4B7914] font-black text-[10px]">
+                {columns === 2 ? "⚡ 2 Kolom (Hemat)" : "Standar (1 Kolom)"}
+              </span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setColumns(1)}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
+                  columns === 1
+                    ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                )}
+              >
+                <Columns className="h-3.5 w-3.5" />
+                <span>1 Kolom</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setColumns(2)}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer",
+                  columns === 2
+                    ? "bg-[#7AB82A] text-white border-[#7AB82A] shadow-xs ring-2 ring-[#D5EFA9]"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                )}
+              >
+                <Columns className="h-3.5 w-3.5" />
+                <span>2 Kolom (Hemat)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Ukuran Huruf */}
           <div className="space-y-1.5">
             <label className="block font-black text-slate-700 uppercase tracking-wider text-[11px]">
-              Ukuran Font & Tampilan:
+              Ukuran Font:
             </label>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-                {[
-                  { key: "sm", label: "Kecil (Hemat Kertas)" },
-                  { key: "base", label: "Standar" },
-                  { key: "lg", label: "Besar" },
-                ].map((s) => (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => setFontSize(s.key as any)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                      fontSize === s.key ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
-                    )}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-3 pt-1 text-[11px] font-semibold text-slate-600">
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showPoints}
-                    onChange={(e) => setShowPoints(e.target.checked)}
-                    className="rounded border-slate-300 text-[#7AB82A] focus:ring-[#7AB82A]"
-                  />
-                  <span>Bobot Poin</span>
-                </label>
-
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showInstructions}
-                    onChange={(e) => setShowInstructions(e.target.checked)}
-                    className="rounded border-slate-300 text-[#7AB82A] focus:ring-[#7AB82A]"
-                  />
-                  <span>Petunjuk</span>
-                </label>
-
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showSignatures}
-                    onChange={(e) => setShowSignatures(e.target.checked)}
-                    className="rounded border-slate-300 text-[#7AB82A] focus:ring-[#7AB82A]"
-                  />
-                  <span>Kolom Tanda Tangan</span>
-                </label>
-              </div>
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              {[
+                { key: "sm", label: "Kecil (Hemat)" },
+                { key: "base", label: "Standar" },
+                { key: "lg", label: "Besar" },
+              ].map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => setFontSize(s.key as any)}
+                  className={cn(
+                    "flex-1 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer text-center",
+                    fontSize === s.key ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  {s.label}
+                </button>
+              ))}
             </div>
+          </div>
+        </div>
+
+        {/* Checkbox Options & Toggle Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-[11px] font-semibold text-slate-600">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            {columns === 2 && (
+              <label className="flex items-center gap-1.5 cursor-pointer text-[#4B7914] font-bold">
+                <input
+                  type="checkbox"
+                  checked={showColumnDivider}
+                  onChange={(e) => setShowColumnDivider(e.target.checked)}
+                  className="rounded border-slate-300 text-[#7AB82A] focus:ring-[#7AB82A]"
+                />
+                <span>Garis Tengah Kolom</span>
+              </label>
+            )}
+
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pageMargin === "compact"}
+                onChange={(e) => setPageMargin(e.target.checked ? "compact" : "normal")}
+                className="rounded border-slate-300 text-[#7AB82A] focus:ring-[#7AB82A]"
+              />
+              <span>Margin Rapat (Hemat Kertas)</span>
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showPoints}
+                onChange={(e) => setShowPoints(e.target.checked)}
+                className="rounded border-slate-300 text-[#7AB82A] focus:ring-[#7AB82A]"
+              />
+              <span>Bobot Poin</span>
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showInstructions}
+                onChange={(e) => setShowInstructions(e.target.checked)}
+                className="rounded border-slate-300 text-[#7AB82A] focus:ring-[#7AB82A]"
+              />
+              <span>Petunjuk</span>
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showSignatures}
+                onChange={(e) => setShowSignatures(e.target.checked)}
+                className="rounded border-slate-300 text-[#7AB82A] focus:ring-[#7AB82A]"
+              />
+              <span>Kolom Tanda Tangan</span>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400">Orientasi:</span>
+            <button
+              type="button"
+              onClick={() => setPageOrientation("portrait")}
+              className={cn(
+                "px-2 py-0.5 rounded-md font-bold text-[10px] cursor-pointer transition-colors",
+                pageOrientation === "portrait" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+            >
+              Potret
+            </button>
+            <button
+              type="button"
+              onClick={() => setPageOrientation("landscape")}
+              className={cn(
+                "px-2 py-0.5 rounded-md font-bold text-[10px] cursor-pointer transition-colors",
+                pageOrientation === "landscape" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+            >
+              Lanskap
+            </button>
           </div>
         </div>
       </div>
@@ -233,7 +327,11 @@ export default function PrintExamPage() {
       {/* 📄 PRINTABLE PAPER SHEET (A4 Standard Format) */}
       <div
         className={cn(
-          "max-w-4xl mx-auto bg-white text-black p-8 sm:p-12 rounded-2xl shadow-xl print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full border print:border-none",
+          "mx-auto bg-white text-black rounded-2xl shadow-xl print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full border print:border-none transition-all",
+          pageOrientation === "landscape" ? "max-w-6xl" : "max-w-4xl",
+          pageMargin === "compact"
+            ? "p-6 sm:p-8 print:p-0"
+            : "p-8 sm:p-12 print:p-0",
           fontSize === "sm" && "text-xs leading-normal",
           fontSize === "base" && "text-sm leading-relaxed",
           fontSize === "lg" && "text-base leading-relaxed"
@@ -256,7 +354,7 @@ export default function PrintExamPage() {
         </div>
 
         {/* METADATA UJIAN & KOTAK IDENTITAS SISWA */}
-        <div className="my-4 border-2 border-black p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold leading-normal">
+        <div className="my-3.5 border-2 border-black p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold leading-normal">
           {/* Sisi Kiri: Informasi Ujian */}
           <div className="space-y-1">
             <div className="grid grid-cols-3">
@@ -285,7 +383,7 @@ export default function PrintExamPage() {
 
           {/* Sisi Kanan: Kolom Isian Siswa / Nilai */}
           {showStudentIdentityBox && (
-            <div className="border border-black p-2.5 space-y-1.5 bg-slate-50/50 print:bg-transparent">
+            <div className="border border-black p-2 space-y-1 bg-slate-50/50 print:bg-transparent">
               {printMode === "STUDENT" ? (
                 <>
                   <div className="grid grid-cols-3">
@@ -302,7 +400,7 @@ export default function PrintExamPage() {
                   </div>
                   <div className="flex items-center justify-between pt-1 mt-1 border-t border-black">
                     <span className="text-slate-700">Paraf Pengawas: ............</span>
-                    <div className="border border-black px-3 py-1 font-black text-center text-xs">
+                    <div className="border border-black px-3 py-0.5 font-black text-center text-xs">
                       <span>NILAI:</span>
                     </div>
                   </div>
@@ -323,7 +421,7 @@ export default function PrintExamPage() {
 
         {/* PETUNJUK UMUM PENGERJAAN */}
         {showInstructions && (
-          <div className="mb-5 p-3 border border-dashed border-black text-xs space-y-1 bg-slate-50/40 print:bg-transparent">
+          <div className="mb-4 p-2.5 border border-dashed border-black text-xs space-y-1 bg-slate-50/40 print:bg-transparent">
             <p className="font-bold uppercase tracking-wider">PETUNJUK UMUM PENGERJAAN UJIAN:</p>
             <ol className="list-decimal list-inside space-y-0.5 font-normal text-slate-900">
               <li>Berdoalah sebelum mulai mengerjakan soal ujian.</li>
@@ -342,40 +440,57 @@ export default function PrintExamPage() {
         )}
 
         {/* DAFTAR BUTIR SOAL */}
-        <div className="space-y-6">
+        <div
+          className={cn(
+            "space-y-4",
+            columns === 2 && "print-columns-2"
+          )}
+          style={
+            columns === 2
+              ? {
+                  columnCount: 2,
+                  columnGap: pageOrientation === "landscape" ? "2.5rem" : "1.75rem",
+                  columnRule: showColumnDivider ? "1px solid #000" : "none",
+                }
+              : undefined
+          }
+        >
           {/* SECTION 1: PILIHAN GANDA */}
           {mcqQuestions.length > 0 && (
-            <div className="space-y-4">
-              <div className="font-black text-xs uppercase tracking-wider border-b-2 border-black pb-1">
+            <div className="space-y-3 mb-4">
+              <div
+                className="font-black text-xs uppercase tracking-wider border-b-2 border-black pb-1 mb-2 column-span-all"
+                style={{ columnSpan: "all" }}
+              >
                 I. PILIHAN GANDA (Berilah tanda silang (X) pada huruf A, B, C, atau D di depan jawaban yang paling benar!)
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {mcqQuestions.map((q: any, idx: number) => {
                   const qNumber = idx + 1;
                   return (
-                    <div key={q.id} className="break-inside-avoid space-y-2 pt-1">
+                    <div key={q.id} className="break-inside-avoid space-y-1.5 pt-1">
                       {/* Question Prompt */}
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-start gap-1.5">
                         <span className="font-bold shrink-0">{qNumber}.</span>
-                        <div className="flex-1 space-y-2">
-                          <p className="font-normal text-justify whitespace-pre-line leading-relaxed">
+                        <div className="flex-1 space-y-1.5">
+                          <div className="font-normal text-justify whitespace-pre-line leading-snug">
                             <MathRenderer content={q.questionText} />
-                          </p>
+                          </div>
 
                           {q.questionImage && (
-                            <div className="my-2 max-w-md">
+                            <div className="my-1.5 max-w-full">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={q.questionImage}
                                 alt={`Gambar Soal ${qNumber}`}
-                                className="max-h-60 max-w-full rounded border border-slate-300 object-contain print:border-black"
+                                className="max-h-48 max-w-full rounded border border-slate-300 object-contain print:border-black"
                               />
                             </div>
                           )}
 
                           {showPoints && (
-                            <span className="text-[11px] font-bold text-slate-600 italic block">
+                            <span className="text-[10px] font-bold text-slate-600 italic block">
                               [Skor: {q.points} Poin]
                             </span>
                           )}
@@ -383,7 +498,10 @@ export default function PrintExamPage() {
                       </div>
 
                       {/* Options Grid / List */}
-                      <div className="pl-6 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                      <div className={cn(
+                        "pl-4 grid gap-x-2 gap-y-1",
+                        columns === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2"
+                      )}>
                         {q.options?.map((opt: any, oIdx: number) => {
                           const optKey = opt.optionKey || opt.key || String.fromCharCode(65 + oIdx);
                           const isCorrect = Boolean(opt.isCorrect);
@@ -391,7 +509,7 @@ export default function PrintExamPage() {
                             <div
                               key={oIdx}
                               className={cn(
-                                "flex items-start gap-2 p-1 rounded transition-colors",
+                                "flex items-start gap-1 p-0.5 rounded transition-colors break-inside-avoid",
                                 printMode === "TEACHER_KEY" && isCorrect
                                   ? "bg-emerald-100 font-bold text-emerald-950 border border-emerald-400 print:bg-slate-200 print:border-black"
                                   : "text-slate-900"
@@ -400,11 +518,11 @@ export default function PrintExamPage() {
                               <span className="font-bold shrink-0">
                                 {printMode === "TEACHER_KEY" && isCorrect ? `[✓ ${optKey}]` : `(${optKey})`}
                               </span>
-                              <span className="flex-1">
+                              <span className="flex-1 leading-snug">
                                 <MathRenderer content={opt.optionText || opt.text} />
                               </span>
                               {printMode === "TEACHER_KEY" && isCorrect && (
-                                <span className="text-[10px] uppercase tracking-wider font-black text-emerald-800 print:text-black">
+                                <span className="text-[9px] uppercase tracking-wider font-black text-emerald-800 print:text-black shrink-0">
                                   KUNCI
                                 </span>
                               )}
@@ -415,7 +533,7 @@ export default function PrintExamPage() {
 
                       {/* Explanation (if Teacher Key mode) */}
                       {printMode === "TEACHER_KEY" && showExplanations && q.explanation && (
-                        <div className="ml-6 p-2 rounded bg-amber-50 border border-amber-200 text-xs text-amber-900 print:bg-slate-100 print:border-black">
+                        <div className="ml-4 p-1.5 rounded bg-amber-50 border border-amber-200 text-xs text-amber-900 print:bg-slate-100 print:border-black break-inside-avoid">
                           <strong>Pembahasan:</strong> <MathRenderer content={q.explanation} />
                         </div>
                       )}
@@ -428,34 +546,37 @@ export default function PrintExamPage() {
 
           {/* SECTION 2: BENAR / SALAH */}
           {tfQuestions.length > 0 && (
-            <div className="space-y-4 pt-2">
-              <div className="font-black text-xs uppercase tracking-wider border-b-2 border-black pb-1">
+            <div className="space-y-3 pt-2 mb-4">
+              <div
+                className="font-black text-xs uppercase tracking-wider border-b-2 border-black pb-1 mb-2 column-span-all"
+                style={{ columnSpan: "all" }}
+              >
                 II. BENAR ATAU SALAH (Tentukan apakah pernyataan di bawah ini BENAR atau SALAH!)
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {tfQuestions.map((q: any, idx: number) => {
                   const qNumber = mcqQuestions.length + idx + 1;
                   const correctOpt = q.options?.find((o: any) => o.isCorrect);
                   const correctText = correctOpt?.optionText || correctOpt?.text || correctOpt?.key || "-";
 
                   return (
-                    <div key={q.id} className="break-inside-avoid space-y-1.5 pt-1">
-                      <div className="flex items-start gap-2">
+                    <div key={q.id} className="break-inside-avoid space-y-1 pt-1">
+                      <div className="flex items-start gap-1.5">
                         <span className="font-bold shrink-0">{qNumber}.</span>
-                        <div className="flex-1 space-y-2">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <p className="font-normal text-justify flex-1">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1.5">
+                            <div className="font-normal text-justify flex-1 leading-snug">
                               <MathRenderer content={q.questionText} />
-                            </p>
-                            <div className="flex items-center gap-3 shrink-0 pl-2">
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 pl-1">
                               {printMode === "STUDENT" ? (
-                                <div className="flex items-center gap-3 text-xs font-bold">
+                                <div className="flex items-center gap-2 text-xs font-bold whitespace-nowrap">
                                   <span>[&nbsp;&nbsp;&nbsp;&nbsp;] Benar</span>
                                   <span>[&nbsp;&nbsp;&nbsp;&nbsp;] Salah</span>
                                 </div>
                               ) : (
-                                <div className="px-2 py-0.5 bg-emerald-100 border border-emerald-400 rounded text-xs font-black text-emerald-950 print:bg-slate-200 print:border-black">
+                                <div className="px-1.5 py-0.5 bg-emerald-100 border border-emerald-400 rounded text-xs font-black text-emerald-950 print:bg-slate-200 print:border-black whitespace-nowrap">
                                   Kunci: {correctText}
                                 </div>
                               )}
@@ -463,18 +584,18 @@ export default function PrintExamPage() {
                           </div>
 
                           {q.questionImage && (
-                            <div className="my-2 max-w-md">
+                            <div className="my-1.5 max-w-full">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={q.questionImage}
                                 alt={`Gambar Soal ${qNumber}`}
-                                className="max-h-60 max-w-full rounded border border-slate-300 object-contain print:border-black"
+                                className="max-h-48 max-w-full rounded border border-slate-300 object-contain print:border-black"
                               />
                             </div>
                           )}
 
                           {showPoints && (
-                            <div className="text-[11px] font-bold text-slate-600 italic">
+                            <div className="text-[10px] font-bold text-slate-600 italic">
                               [Skor: {q.points} Poin]
                             </div>
                           )}
@@ -489,36 +610,39 @@ export default function PrintExamPage() {
 
           {/* SECTION 3: URAIAN / ESAI */}
           {essayQuestions.length > 0 && (
-            <div className="space-y-4 pt-2">
-              <div className="font-black text-xs uppercase tracking-wider border-b-2 border-black pb-1">
+            <div className="space-y-3 pt-2 mb-4">
+              <div
+                className="font-black text-xs uppercase tracking-wider border-b-2 border-black pb-1 mb-2 column-span-all"
+                style={{ columnSpan: "all" }}
+              >
                 III. URAIAN / ESAI (Jawablah pertanyaan-pertanyaan di bawah ini dengan jelas dan tepat!)
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-3.5">
                 {essayQuestions.map((q: any, idx: number) => {
                   const qNumber = mcqQuestions.length + tfQuestions.length + idx + 1;
                   return (
-                    <div key={q.id} className="break-inside-avoid space-y-2 pt-1">
-                      <div className="flex items-start gap-2">
+                    <div key={q.id} className="break-inside-avoid space-y-1.5 pt-1">
+                      <div className="flex items-start gap-1.5">
                         <span className="font-bold shrink-0">{qNumber}.</span>
-                        <div className="flex-1 space-y-2">
-                          <p className="font-normal text-justify leading-relaxed">
+                        <div className="flex-1 space-y-1">
+                          <div className="font-normal text-justify leading-snug">
                             <MathRenderer content={q.questionText} />
-                          </p>
+                          </div>
 
                           {q.questionImage && (
-                            <div className="my-2 max-w-md">
+                            <div className="my-1.5 max-w-full">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={q.questionImage}
                                 alt={`Gambar Soal ${qNumber}`}
-                                className="max-h-60 max-w-full rounded border border-slate-300 object-contain print:border-black"
+                                className="max-h-48 max-w-full rounded border border-slate-300 object-contain print:border-black"
                               />
                             </div>
                           )}
 
                           {showPoints && (
-                            <span className="text-[11px] font-bold text-slate-600 italic block">
+                            <span className="text-[10px] font-bold text-slate-600 italic block">
                               [Skor Maksimal: {q.points} Poin]
                             </span>
                           )}
@@ -527,15 +651,14 @@ export default function PrintExamPage() {
 
                       {/* Ruled Writing Lines for Students */}
                       {printMode === "STUDENT" ? (
-                        <div className="pl-6 space-y-4 pt-2">
-                          <div className="border-b border-dotted border-black w-full h-4" />
-                          <div className="border-b border-dotted border-black w-full h-4" />
-                          <div className="border-b border-dotted border-black w-full h-4" />
-                          <div className="border-b border-dotted border-black w-full h-4" />
+                        <div className="pl-4 space-y-2 pt-1">
+                          <div className="border-b border-dotted border-black w-full h-3" />
+                          <div className="border-b border-dotted border-black w-full h-3" />
+                          <div className="border-b border-dotted border-black w-full h-3" />
                         </div>
                       ) : (
                         showExplanations && (
-                          <div className="ml-6 p-2.5 rounded bg-amber-50 border border-amber-200 text-xs text-amber-900 print:bg-slate-100 print:border-black">
+                          <div className="ml-4 p-2 rounded bg-amber-50 border border-amber-200 text-xs text-amber-900 print:bg-slate-100 print:border-black break-inside-avoid">
                             <strong>Pedoman Penskoran / Kunci Jawaban:</strong>
                             <p className="mt-0.5 whitespace-pre-line font-normal">
                               {q.explanation || "Jawaban dinilai berdasarkan kelengkapan, ketepatan uraian materi, dan kerapian bahasa."}
@@ -553,20 +676,23 @@ export default function PrintExamPage() {
 
         {/* FOOTER & TANDA TANGAN */}
         {showSignatures && (
-          <div className="mt-12 pt-6 border-t-2 border-black break-inside-avoid text-xs">
-            <div className="text-center font-bold italic mb-6">
+          <div
+            className="mt-8 pt-4 border-t-2 border-black break-inside-avoid text-xs column-span-all"
+            style={{ columnSpan: "all" }}
+          >
+            <div className="text-center font-bold italic mb-4">
               --- Selamat Mengerjakan & Semoga Sukses ---
             </div>
 
             <div className="grid grid-cols-2 text-center font-bold">
-              <div className="space-y-16">
+              <div className="space-y-12">
                 <span>Orang Tua / Wali Siswa,</span>
                 <span className="block border-t border-black w-40 mx-auto pt-1 font-normal">
                   ( ........................................ )
                 </span>
               </div>
 
-              <div className="space-y-16">
+              <div className="space-y-12">
                 <span>Guru Pengampu Mata Pelajaran,</span>
                 <span className="block border-t border-black w-40 mx-auto pt-1 font-bold">
                   ( {exam.teacher?.name || "........................................"} )
@@ -591,12 +717,20 @@ export default function PrintExamPage() {
             display: none !important;
           }
           @page {
-            size: A4;
-            margin: 1.5cm 1.5cm 1.5cm 1.5cm;
+            size: ${pageOrientation === "landscape" ? "A4 landscape" : "A4 portrait"};
+            margin: ${pageMargin === "compact" ? "0.8cm 1cm 0.8cm 1cm" : "1.5cm 1.5cm 1.5cm 1.5cm"};
+          }
+          .print-columns-2 {
+            column-count: 2 !important;
+            column-gap: ${pageOrientation === "landscape" ? "2cm" : "1.2cm"} !important;
+            column-rule: ${showColumnDivider ? "0.5pt solid #000" : "none"} !important;
+          }
+          .column-span-all {
+            column-span: all !important;
           }
           .break-inside-avoid {
-            page-break-inside: avoid;
-            break-inside: avoid;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
         }
       `}</style>
