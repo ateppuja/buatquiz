@@ -985,8 +985,27 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                           <td className="p-3 sticky left-0 bg-white hover:bg-slate-50 z-10 border-r border-slate-200">
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0 flex-1">
-                                <div className="font-bold text-slate-900 leading-snug truncate" title={p.name}>
-                                  {p.name}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-slate-900 leading-snug truncate" title={p.name}>
+                                    {p.name}
+                                  </span>
+                                  {att?.status === "IN_PROGRESS" && (
+                                    <span
+                                      className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-300 shrink-0 inline-flex items-center gap-1"
+                                      title="Murid sedang aktif mengerjakan ujian (Autosave Real-Time)"
+                                    >
+                                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                      Sedang Ujian
+                                    </span>
+                                  )}
+                                  {att?.status === "SUBMITTED" && (
+                                    <span
+                                      className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0"
+                                      title="Murid sudah selesai dan mengumpulkan ujian"
+                                    >
+                                      ✓ Selesai
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-[10px] text-slate-500 font-semibold mt-0.5">
                                   Kelas {p.className} {p.nis ? `(${p.nis})` : ""}
@@ -1054,6 +1073,11 @@ _Terima kasih atas perhatian dan dukungan penuh Bapak/Ibu Orang Tua/Wali Murid._
                             <div className="text-[10px] text-slate-500">
                               ({p.earnedPoints}/{p.maxPoints} pt)
                             </div>
+                            {att?.status === "IN_PROGRESS" && (
+                              <div className="text-[9px] font-bold text-amber-600 mt-0.5">
+                                (Progres Live)
+                              </div>
+                            )}
                           </td>
 
                           {/* Question Answer Cells (Green / Red / Yellow) */}
